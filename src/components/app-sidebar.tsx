@@ -99,10 +99,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               {/* Opción Inicio */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Inicio">
+                <SidebarMenuButton asChild tooltip="Panel principal">
                   <a href="/dashboard">
                     <LayoutDashboard />
-                    <span>Inicio</span>
+                    <span>Panel principal</span>
                   </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>

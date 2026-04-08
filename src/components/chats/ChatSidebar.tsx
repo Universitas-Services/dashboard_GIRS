@@ -76,9 +76,12 @@ export function ChatSidebar({
                 )}
               >
                 <div className="relative">
-                  <Avatar>
-                    <AvatarImage src={chat.user.avatar} />
-                    <AvatarFallback>
+                  <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-50">
+                    <AvatarImage 
+                      src={chat.user.avatar || `https://api.dicebear.com/7.x/notionists/svg?seed=${chat.user.name}`} 
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="font-bold text-slate-700 text-xs bg-slate-100">
                       {chat.user.name.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

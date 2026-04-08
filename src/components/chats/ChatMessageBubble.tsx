@@ -21,9 +21,9 @@ export function ChatMessageBubble({
       )}
     >
       {!isMine && (
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={userAvatar} alt="Sender" />
-          <AvatarFallback>U</AvatarFallback>
+        <Avatar className="h-8 w-8 border border-slate-200/60 shadow-sm bg-slate-50">
+          <AvatarImage src={userAvatar || `https://api.dicebear.com/7.x/notionists/svg?seed=User`} alt="Sender" />
+          <AvatarFallback className="text-[10px] font-bold bg-slate-100">U</AvatarFallback>
         </Avatar>
       )}
 

@@ -47,6 +47,43 @@
 
 :root {
   --radius: 0.625rem;
+  /* Admin Dashboard Custom Colors */
+  --admin-text-title: #0A2540;
+  --admin-card-1-text: #16a34a; /* emerald-600 */
+  --admin-card-1-bg: #dcfce7; /* emerald-100 */
+  --admin-card-2-text: #d97706; /* amber-600 */
+  --admin-card-2-bg: #fef3c7; /* amber-100 */
+  --admin-card-3-text: #4f46e5; /* indigo-600 */
+  --admin-card-3-bg: #e0e7ff; /* indigo-100 */
+  --admin-card-4-text: #dc2626; /* red-600 */
+  --admin-card-4-bg: #fee2e2; /* red-100 */
+  --admin-search-bg: #f8fafc; /* slate-50 */
+  --admin-chart-bar: #8bba8f; /* Lighter muted green */
+  --admin-chart-bar-highlight: #00ea00; /* Bright highlight green */
+  --admin-toggle-bg: #eaeff2;
+  --admin-toggle-active-bg: #00ea00;
+  --admin-toggle-active-text: #ffffff;
+  --admin-badge-suscrito-bg: #84ff70;
+  --admin-badge-suscrito-text: #053b00;
+  --admin-badge-activo-bg: #e2e8f0;
+  --admin-badge-activo-text: #334155;
+  --admin-badge-porpagar-bg: #fde68a; /* Soft amber */
+  --admin-badge-porpagar-text: #92400e;
+  --admin-badge-suspendido-bg: #ffe4e6;
+  --admin-badge-suspendido-text: #e11d48;
+  --admin-avatar-bg: #ecf3ec;
+  --admin-avatar-text: #1e293b;
+  --admin-text-link: #16a34a;
+  --admin-filter-bg: #f5f8f5;
+  
+  --admin-panel-bg: #f0fdf4; /* Light green background for info panel */
+  --admin-id-badge-bg: #e0e7ff;
+  --admin-id-badge-text: #1e1b4b;
+  --admin-card-blue-bg: #3b82f6;
+  --admin-card-blue-border: #2563eb;
+  --admin-log-gold-bg: #fffbeb;
+  --admin-log-gold-text: #b45309;
+
   --background: #d9e8e3;
   --foreground: #3b4044;
   --card: #ffffff;

@@ -4,9 +4,12 @@ export type UserRole = 'USER' | 'PAID_USER' | 'ADMIN';
 
 // 1. Definimos la interfaz del perfil aquí para reutilizarla
 export interface UserProfile {
-  institucion?: string;
-  cargo?: string;
-  // Puedes agregar otros campos del perfil si existen
+  id: string;
+  nombreEnte: string;
+  cargo: string;
+  plazoEntregaActa: string | null;
+  estatusNormativaGirs: string;
+  userId: string;
 }
 
 export interface User {
@@ -16,6 +19,9 @@ export interface User {
   apellido: string | null;
   role: UserRole;
   telefono: string | null;
+  estado: string | null;
+  municipio: string | null;
+  tipoUsuario: string | null;
   isEmailVerified: boolean;
   isActive: boolean;
   profileCompleted: boolean;
