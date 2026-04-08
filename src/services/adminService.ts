@@ -6,11 +6,14 @@ export interface GetUsersParams {
   page?: number;
   limit?: number;
   search?: string;
-  tipoPlan?: 'GRATIS' | 'PAGO' | 'TODOS';
-  isActive?: boolean | 'TODOS';
+  role?: string;
+  isActive?: string;
+  estado?: string;
+  municipio?: string;
+  tipoUsuario?: string;
 }
 
-// Estructura de respuesta paginada (asumimos que es similar a la de Actas)
+// Estructura de respuesta paginada
 export interface UsersResponse {
   data: User[];
   meta: {
@@ -25,17 +28,18 @@ export interface UsersResponse {
 export const adminService = {
   // 2. CORRECCIÓN: Ahora acepta 'params' opcionales y los limpia antes de enviar
   getAllUsers: async (params?: GetUsersParams): Promise<UsersResponse> => {
-    // Limpiar params de valores vacíos o 'TODOS'
+    // Limpiar params de valores vacíos
     const cleanParams: Record<string, string | number | boolean> = {};
     if (params) {
       if (params.page !== undefined) cleanParams.page = params.page;
       if (params.limit !== undefined) cleanParams.limit = params.limit;
       if (params.search && params.search.trim() !== '')
         cleanParams.search = params.search;
-      if (params.tipoPlan && params.tipoPlan !== 'TODOS')
-        cleanParams.tipoPlan = params.tipoPlan;
-      if (params.isActive !== undefined && params.isActive !== 'TODOS')
-        cleanParams.isActive = params.isActive;
+      if (params.role) cleanParams.role = params.role;
+      if (params.isActive !== undefined) cleanParams.isActive = params.isActive;
+      if (params.estado) cleanParams.estado = params.estado;
+      if (params.municipio) cleanParams.municipio = params.municipio;
+      if (params.tipoUsuario) cleanParams.tipoUsuario = params.tipoUsuario;
     }
 
     // Pasamos los cleanParams a la petición axios

@@ -12,16 +12,149 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { sdk } from '@/lib/universitas';
+import { adminService, GetUsersParams } from '@/services/adminService';
+import { User as UserType, PaginationMeta } from '@/types/user';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+
+interface Estado {
+  id: number;
+  nombre: string;
+}
+
+interface Municipio {
+  id: number;
+  estado_id: number;
+  nombre: string;
+}
 
 export default function UsuariosPage() {
+  // --- ESTADO ---
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // SDK Data
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [loadingTerritorio, setLoadingTerritorio] = useState(false);
+
+  // Filtros
+  const [filters, setFilters] = useState<GetUsersParams>({
+    page: 1,
+    limit: 10,
+    search: '',
+    isActive: undefined,
+    estado: undefined,
+    municipio: undefined,
+    tipoUsuario: undefined,
+  });
+
+  const [tempSearch, setTempSearch] = useState('');
+
+  // --- FETCHING ---
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await adminService.getAllUsers(filters);
+      setUsers(response.data);
+      setMeta(response.meta);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  const fetchEstados = useCallback(async () => {
+    try {
+      const response = await sdk.territorio.getEstados();
+      setEstados(response.data);
+    } catch (error) {
+      console.error('Error fetching estados:', error);
+    }
+  }, []);
+
+  const fetchMunicipios = useCallback(async (estadoId: number) => {
+    setLoadingTerritorio(true);
+    try {
+      const response = await sdk.territorio.getMunicipios(estadoId);
+      setMunicipios(response.data);
+    } catch (error) {
+      console.error('Error fetching municipios:', error);
+    } finally {
+      setLoadingTerritorio(false);
+    }
+  }, []);
+
+  // --- EFFECTS ---
+
+  useEffect(() => {
+    fetchEstados();
+  }, [fetchEstados]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // --- HANDLERS ---
+
+  const handleEstadoChange = (estadoNombre: string) => {
+    const estado = estados.find(e => e.nombre === estadoNombre);
+    if (estado) {
+      setFilters(prev => ({ ...prev, estado: estadoNombre, municipio: undefined, page: 1 }));
+      fetchMunicipios(estado.id);
+    } else {
+      setFilters(prev => ({ ...prev, estado: undefined, municipio: undefined, page: 1 }));
+      setMunicipios([]);
+    }
+  };
+
+  const handleMunicipioChange = (municipioNombre: string) => {
+    setFilters(prev => ({ ...prev, municipio: municipioNombre === 'todos' ? undefined : municipioNombre, page: 1 }));
+  };
+
+  const handleTipoUsuarioChange = (tipo: string) => {
+    setFilters(prev => ({ ...prev, tipoUsuario: tipo === 'todos' ? undefined : tipo, page: 1 }));
+  };
+
+  const handleStatusChange = (status: string) => {
+    let isActiveValue: string | undefined = undefined;
+    if (status === 'activo') isActiveValue = 'true';
+    if (status === 'inactivo') isActiveValue = 'false';
+    
+    setFilters(prev => ({ ...prev, isActive: isActiveValue, page: 1 }));
+  };
+
+  const applySearch = () => {
+    setFilters(prev => ({ ...prev, search: tempSearch, page: 1 }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      page: 1,
+      limit: 10,
+      search: '',
+      isActive: undefined,
+      estado: undefined,
+      municipio: undefined,
+      tipoUsuario: undefined,
+    });
+    setTempSearch('');
+    setMunicipios([]);
+  };
+
   const statCards = [
     {
         title: 'USUARIOS TOTALES',
-        value: '1,284',
+        value: meta?.totalItems.toString() || '...',
         icon: User,
         color: 'var(--admin-card-1-text)',
         bgColor: 'var(--admin-card-1-bg)',
-        badge: '+12%'
+        badge: ''
     },
     {
         title: 'POR ACTIVAR PAGO',
@@ -29,7 +162,7 @@ export default function UsuariosPage() {
         icon: ClipboardList,
         color: 'var(--admin-card-2-text)',
         bgColor: 'var(--admin-card-2-bg)',
-        badge: '42 Hoy' /* Reteniendo mockup base pero ajustando titulo */
+        badge: '42 Hoy'
     },
     {
         title: 'CUENTAS SUSCRITAS',
@@ -49,69 +182,6 @@ export default function UsuariosPage() {
     },
   ];
 
-  const tableUsers = [
-    {
-      id: '#G-8921',
-      name: 'Elena Rodríguez',
-      avatar: 'ER',
-      role: 'Asesor Privado',
-      roleIcon: Shield,
-      roleIconColor: 'text-blue-600',
-      location: 'Monterrey',
-      state: 'NUEVO LEÓN',
-      date: '12 May 2023',
-      status: 'Suscrito',
-      badgeBg: 'var(--admin-badge-suscrito-bg)',
-      badgeColor: 'var(--admin-badge-suscrito-text)',
-      img: 'https://api.dicebear.com/7.x/notionists/svg?seed=Elena'
-    },
-    {
-      id: '#G-4412',
-      name: 'Carlos Mendoza',
-      avatar: 'CM',
-      role: 'Servidor Público',
-      roleIcon: Building2,
-      roleIconColor: 'text-emerald-600',
-      location: 'Zapopan',
-      state: 'JALISCO',
-      date: '04 Oct 2023',
-      status: 'Activo',
-      badgeBg: 'var(--admin-badge-activo-bg)',
-      badgeColor: 'var(--admin-badge-activo-text)',
-      img: 'https://api.dicebear.com/7.x/notionists/svg?seed=Carlos'
-    },
-    {
-      id: '#G-7721',
-      name: 'Sofía Villalobos',
-      avatar: 'SV',
-      role: 'Asesor Privado',
-      roleIcon: Shield,
-      roleIconColor: 'text-blue-600',
-      location: 'Mérida',
-      state: 'YUCATÁN',
-      date: '22 Jan 2024',
-      status: 'Por pagar',
-      badgeBg: 'var(--admin-badge-porpagar-bg)',
-      badgeColor: 'var(--admin-badge-porpagar-text)',
-      img: 'https://api.dicebear.com/7.x/notionists/svg?seed=Sofia'
-    },
-    {
-      id: '#G-1029',
-      name: 'Marco Antonio Paz',
-      avatar: 'MP',
-      role: 'Servidor Público',
-      roleIcon: Building2,
-      roleIconColor: 'text-emerald-600',
-      location: 'Puebla',
-      state: 'PUEBLA',
-      date: '15 Nov 2022',
-      status: 'Suspendido',
-      badgeBg: 'var(--admin-badge-suspendido-bg)',
-      badgeColor: 'var(--admin-badge-suspendido-text)',
-      img: 'https://api.dicebear.com/7.x/notionists/svg?seed=Marco'
-    }
-  ];
-
   return (
     <div className="flex flex-col gap-6 w-full pt-2">
       {/* Top Header unificado de todo Dashboard */}
@@ -127,9 +197,12 @@ export default function UsuariosPage() {
               <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
-                      placeholder="Buscar por nombre o ID de usuario..." 
+                      placeholder="Buscar por correo electrónico..." 
                       className="w-full pl-9 border-none rounded-full h-10 shadow-sm"
                       style={{ backgroundColor: 'var(--admin-search-bg)' }}
+                      value={tempSearch}
+                      onChange={(e) => setTempSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && applySearch()}
                   />
               </div>
           </div>
@@ -159,27 +232,37 @@ export default function UsuariosPage() {
                 <div className="lg:col-span-2 rounded-xl p-6 flex flex-col sm:flex-row gap-6 justify-between items-center" style={{ backgroundColor: 'var(--admin-filter-bg)' }}>
                     <div className="flex flex-col w-full">
                         <label className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase mb-2">Estado</label>
-                        <Select defaultValue="todos">
+                        <Select 
+                            value={filters.estado || "todos"} 
+                            onValueChange={handleEstadoChange}
+                        >
                             <SelectTrigger className="bg-white border-none rounded-lg h-11 text-slate-800 font-medium">
                                 <SelectValue placeholder="Todos los Estados" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="todos">Todos los Estados</SelectItem>
-                                <SelectItem value="nl">Nuevo León</SelectItem>
-                                <SelectItem value="jal">Jalisco</SelectItem>
+                                {estados.map((e) => (
+                                    <SelectItem key={e.id} value={e.nombre}>{e.nombre}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
                     <div className="flex flex-col w-full">
                         <label className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase mb-2">Municipio</label>
-                        <Select defaultValue="seleccionar">
+                        <Select 
+                            value={filters.municipio || "seleccionar"} 
+                            onValueChange={handleMunicipioChange}
+                            disabled={!filters.estado || loadingTerritorio}
+                        >
                             <SelectTrigger className="bg-white border-none rounded-lg h-11 font-medium text-slate-800">
-                                <SelectValue placeholder="Seleccionar Municipio" />
+                                <SelectValue placeholder={loadingTerritorio ? "Cargando..." : "Seleccionar Municipio"} />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="seleccionar">Seleccionar Municipio</SelectItem>
-                                <SelectItem value="monterrey">Monterrey</SelectItem>
-                                <SelectItem value="zapopan">Zapopan</SelectItem>
+                                <SelectItem value="seleccionar" disabled>Seleccionar Municipio</SelectItem>
+                                <SelectItem value="todos">Todos los Municipios</SelectItem>
+                                {municipios.map((m) => (
+                                    <SelectItem key={m.id} value={m.nombre}>{m.nombre}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -189,13 +272,27 @@ export default function UsuariosPage() {
                 <div className="lg:col-span-1 rounded-xl p-6 flex flex-col justify-center" style={{ backgroundColor: 'var(--admin-filter-bg)' }}>
                     <label className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase mb-2">Tipo de Perfil</label>
                     <div className="flex gap-2">
-                        <Badge className="px-5 py-2 text-xs rounded-md shadow-none cursor-pointer hover:opacity-90 transition-opacity" style={{ backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' }}>
+                        <Badge 
+                            className={`px-5 py-2 text-xs rounded-md shadow-none cursor-pointer transition-opacity ${!filters.tipoUsuario ? '' : 'bg-white text-muted-foreground hover:bg-white hover:opacity-100'}`}
+                            style={!filters.tipoUsuario ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                            onClick={() => handleTipoUsuarioChange('todos')}
+                        >
                             Todos
                         </Badge>
-                        <Badge variant="secondary" className="px-5 py-2 text-xs rounded-md bg-white hover:bg-white text-muted-foreground border-none font-semibold cursor-pointer">
+                        <Badge 
+                            variant="secondary" 
+                            className={`px-5 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.tipoUsuario === 'SERVIDOR_PUBLICO' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                            style={filters.tipoUsuario === 'SERVIDOR_PUBLICO' ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                            onClick={() => handleTipoUsuarioChange('SERVIDOR_PUBLICO')}
+                        >
                             Público
                         </Badge>
-                        <Badge variant="secondary" className="px-5 py-2 text-xs rounded-md bg-white hover:bg-white text-muted-foreground border-none font-semibold cursor-pointer">
+                        <Badge 
+                            variant="secondary" 
+                            className={`px-5 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.tipoUsuario === 'ASESOR_PRIVADO' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                            style={filters.tipoUsuario === 'ASESOR_PRIVADO' ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                            onClick={() => handleTipoUsuarioChange('ASESOR_PRIVADO')}
+                        >
                             Asesor
                         </Badge>
                     </div>
@@ -207,19 +304,44 @@ export default function UsuariosPage() {
                 <div className="flex flex-col w-full md:w-auto">
                     <label className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase mb-2">Estatus de Cuenta</label>
                     <div className="flex flex-wrap gap-2">
-                        <Badge variant="secondary" className="px-4 py-2 text-xs rounded-md bg-white text-muted-foreground border-none font-semibold hover:bg-white cursor-pointer">Por activar</Badge>
-                        <Badge variant="secondary" className="px-4 py-2 text-xs rounded-md bg-white text-muted-foreground border-none font-semibold hover:bg-white cursor-pointer">Prueba gratuita</Badge>
-                        <Badge className="px-4 py-2 text-xs rounded-md shadow-none cursor-pointer" style={{ backgroundColor: 'var(--admin-badge-suscrito-bg)', color: 'var(--admin-badge-suscrito-text)' }}>Suscrito</Badge>
-                        <Badge variant="secondary" className="px-4 py-2 text-xs rounded-md bg-white text-muted-foreground border-none font-semibold hover:bg-white cursor-pointer">Suspendido</Badge>
-                        <Badge variant="secondary" className="px-4 py-2 text-xs rounded-md bg-white text-muted-foreground border-none font-semibold hover:bg-white cursor-pointer">Por renovar</Badge>
+                        <Badge 
+                            variant="secondary" 
+                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${!filters.isActive ? 'shadow-sm active-badge' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                            style={!filters.isActive ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                            onClick={() => handleStatusChange('todos')}
+                        >
+                            Todos
+                        </Badge>
+                        <Badge 
+                            variant="secondary" 
+                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.isActive === 'true' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                            style={filters.isActive === 'true' ? { backgroundColor: 'var(--admin-badge-activo-bg)', color: 'var(--admin-badge-activo-text)' } : {}}
+                            onClick={() => handleStatusChange('activo')}
+                        >
+                            Activos
+                        </Badge>
+                        <Badge 
+                            variant="secondary" 
+                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.isActive === 'false' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                            style={filters.isActive === 'false' ? { backgroundColor: 'var(--admin-badge-suspendido-bg)', color: 'var(--admin-badge-suspendido-text)' } : {}}
+                            onClick={() => handleStatusChange('inactivo')}
+                        >
+                            Inactivos
+                        </Badge>
                     </div>
                 </div>
                 
                 <div className="flex items-center gap-6 mt-4 md:mt-0">
-                    <button className="flex items-center gap-2 text-sm font-bold text-green-700 hover:text-green-800 transition-colors">
+                    <button 
+                        onClick={clearFilters}
+                        className="flex items-center gap-2 text-sm font-bold text-green-700 hover:text-green-800 transition-colors"
+                    >
                         <FilterX className="h-4 w-4" /> Limpiar
                     </button>
-                    <Button className="bg-[#1A1C19] hover:bg-black text-white px-8 py-5 h-11 rounded-lg font-bold text-sm">
+                    <Button 
+                        onClick={applySearch}
+                        className="bg-[#1A1C19] hover:bg-black text-white px-8 py-5 h-11 rounded-lg font-bold text-sm"
+                    >
                         Aplicar Filtros
                     </Button>
                 </div>
@@ -241,70 +363,113 @@ export default function UsuariosPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {tableUsers.map((user, idx) => {
-                            const RoleIcon = user.roleIcon;
-                            return (
-                                <TableRow key={idx} className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors">
-                                    <TableCell className="py-5 pl-6">
-                                        <div className="flex items-center gap-4">
-                                            <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
-                                                <AvatarImage src={user.img} className="object-cover" />
-                                                <AvatarFallback className="font-bold text-slate-800 text-xs">{user.avatar}</AvatarFallback>
-                                            </Avatar>
-                                            <div className="flex flex-col">
-                                                <span className="font-bold text-slate-900 text-sm">{user.name}</span>
-                                                <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">ID: {user.id}</span>
+                        {loading ? (
+                             <TableRow>
+                                <TableCell colSpan={6} className="h-40 text-center">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-emerald-500"></div>
+                                        <span className="text-sm font-medium text-muted-foreground">Cargando usuarios...</span>
+                                    </div>
+                                </TableCell>
+                             </TableRow>
+                        ) : users.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={6} className="h-40 text-center text-muted-foreground font-medium">
+                                    No se encontraron usuarios con los filtros aplicados.
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            users.map((user, idx) => {
+                                return (
+                                    <TableRow key={user.id} className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors">
+                                        <TableCell className="py-5 pl-6">
+                                            <div className="flex items-center gap-4">
+                                                <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
+                                                    <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} className="object-cover" />
+                                                    <AvatarFallback className="font-bold text-slate-800 text-xs">{user.nombre[0]}{user.apellido ? user.apellido[0] : ''}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-900 text-sm">{user.nombre} {user.apellido}</span>
+                                                    <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">{user.email}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="py-5">
-                                        <div className="flex items-center gap-2.5 text-slate-600 font-semibold text-sm">
-                                            <RoleIcon className={`h-4 w-4 ${user.roleIconColor}`} />
-                                            {user.role}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="py-5">
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-slate-800 text-sm">{user.location}</span>
-                                            <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase mt-0.5">{user.state}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="py-5 text-slate-800 font-bold text-sm tracking-tight">{user.date}</TableCell>
-                                    <TableCell className="py-5">
-                                        <Badge 
-                                            className="px-3 py-1 text-[11px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default"
-                                            style={{ backgroundColor: user.badgeBg, color: user.badgeColor }}
-                                        >
-                                            {user.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="py-5 pr-6 text-center">
-                                        <a href={`/dashboard/usuarios/${user.id.replace('#', '')}`} className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors inline-flex">
-                                            <Eye className="h-5 w-5" />
-                                        </a>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
+                                        </TableCell>
+                                        <TableCell className="py-5">
+                                            <div className="flex items-center gap-2.5 text-slate-600 font-semibold text-sm">
+                                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? <Building2 className="h-4 w-4 text-emerald-600" /> : <Shield className="h-4 w-4 text-blue-600" />}
+                                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Servidor Público' : 'Asesor Privado'}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-5">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-800 text-sm">{user.municipio || '---'}</span>
+                                                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase mt-0.5">{user.estado || '---'}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="py-5 text-slate-800 font-bold text-sm tracking-tight">
+                                            {format(new Date(user.createdAt), 'dd MMM yyyy', { locale: es })}
+                                        </TableCell>
+                                        <TableCell className="py-5">
+                                            <Badge 
+                                                className="px-3 py-1 text-[11px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default"
+                                                style={{ 
+                                                    backgroundColor: user.isActive ? 'var(--admin-badge-activo-bg)' : 'var(--admin-badge-suspendido-bg)', 
+                                                    color: user.isActive ? 'var(--admin-badge-activo-text)' : 'var(--admin-badge-suspendido-text)' 
+                                                }}
+                                            >
+                                                {user.isActive ? 'Activo' : 'Inactivo'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="py-5 pr-6 text-center">
+                                            <a href={`/dashboard/usuarios/${user.id}`} className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors inline-flex">
+                                                <Eye className="h-5 w-5" />
+                                            </a>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
+                        )}
                     </TableBody>
                 </Table>
             </div>
             
             {/* Paginación */}
             <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-5 border-t border-gray-200/60 bg-[var(--admin-filter-bg)]">
-                <span className="text-xs font-semibold text-muted-foreground mb-4 sm:mb-0">Mostrando <span className="text-slate-900">1-4</span> de <span className="text-slate-900">128</span> usuarios registrados</span>
+                <span className="text-xs font-semibold text-muted-foreground mb-4 sm:mb-0">
+                    Mostrando <span className="text-slate-900">{meta ? ((meta.currentPage - 1) * meta.itemsPerPage) + 1 : 0}-{meta ? Math.min(meta.currentPage * meta.itemsPerPage, meta.totalItems) : 0}</span> de <span className="text-slate-900">{meta?.totalItems || 0}</span> usuarios registrados
+                </span>
                 <div className="flex items-center gap-1.5">
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-md bg-white border-gray-200 hover:bg-gray-50 shadow-sm text-muted-foreground">
+                    <Button 
+                        variant="outline" size="icon" className="h-8 w-8 rounded-md bg-white border-gray-200 hover:bg-gray-50 shadow-sm text-muted-foreground"
+                        disabled={filters.page === 1}
+                        onClick={() => setFilters(prev => ({ ...prev, page: prev.page! - 1 }))}
+                    >
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <Button variant="default" size="icon" className="h-8 w-8 rounded-md shadow-sm border-none font-bold text-sm" style={{ backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' }}>
-                        1
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md font-bold text-sm text-slate-600 hover:bg-white">2</Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md font-bold text-sm text-slate-600 hover:bg-white">3</Button>
-                    <span className="text-sm font-bold text-slate-400 px-1">...</span>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-md font-bold text-sm text-slate-600 hover:bg-white">32</Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-md bg-white border-gray-200 hover:bg-gray-50 shadow-sm text-muted-foreground">
+
+                    {meta && Array.from({ length: Math.min(5, meta.totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                            <Button 
+                                key={pageNum}
+                                variant={filters.page === pageNum ? "default" : "ghost"} 
+                                size="icon" 
+                                className={`h-8 w-8 rounded-md font-bold text-sm ${filters.page === pageNum ? 'shadow-sm border-none' : 'text-slate-600 hover:bg-white'}`}
+                                style={filters.page === pageNum ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                                onClick={() => setFilters(prev => ({ ...prev, page: pageNum }))}
+                            >
+                                {pageNum}
+                            </Button>
+                        );
+                    })}
+                    
+                    {meta && meta.totalPages > 5 && <span className="text-sm font-bold text-slate-400 px-1">...</span>}
+                    
+                    <Button 
+                        variant="outline" size="icon" className="h-8 w-8 rounded-md bg-white border-gray-200 hover:bg-gray-50 shadow-sm text-muted-foreground"
+                        disabled={!meta || filters.page === meta.totalPages}
+                        onClick={() => setFilters(prev => ({ ...prev, page: prev.page! + 1 }))}
+                    >
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>

@@ -3,17 +3,62 @@
 import { 
   Search, Bell, HelpCircle, 
   ArrowLeft, Lock, Shield, Mail, Phone, MapPin, Building, Briefcase, 
-  CheckCircle2, Send, Clock, UserIcon, ShieldCheck, Banknote, Hourglass
+  CheckCircle2, Send, Clock, UserIcon, ShieldCheck, Banknote, Hourglass, Ban
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { adminService } from '@/services/adminService';
+import { User } from '@/types/user';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export default function UserDetailsPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchUser = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    try {
+      const userData = await adminService.getUserById(id);
+      setUser(userData);
+    } catch (error) {
+      console.error('Error fetching user:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchUser();
+  }, [fetchUser]);
+
+  if (loading) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-emerald-500"></div>
+            <p className="text-slate-500 font-medium animate-pulse">Cargando detalles del usuario...</p>
+        </div>
+    );
+  }
+
+  if (!user) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+            <p className="text-slate-500 font-medium">No se encontró el usuario.</p>
+            <Button onClick={() => router.back()}>Volver atrás</Button>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 w-full pt-2">
@@ -57,23 +102,26 @@ export default function UserDetailsPage() {
             <div className="flex items-center gap-6">
                 <div className="relative">
                     <div className="h-24 w-24 rounded-3xl bg-[#0a0a0a] flex items-center justify-center overflow-hidden shadow-md">
-                        <img src="https://api.dicebear.com/7.x/notionists/svg?seed=Ricardo" alt="Ricardo Sánchez" className="h-full w-full object-cover p-2" />
+                        <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} alt={user.nombre} className="h-full w-full object-cover p-2" />
                     </div>
-                    <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>
+                    {user.isActive && <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Ricardo Sánchez</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{user.nombre} {user.apellido}</h2>
                         <Badge 
                             className="px-3 py-0.5 text-[10px] font-extrabold rounded-md shadow-none cursor-default"
-                            style={{ backgroundColor: 'var(--admin-badge-suscrito-bg)', color: 'var(--admin-badge-suscrito-text)' }}
+                            style={{ 
+                                backgroundColor: user.isActive ? 'var(--admin-badge-activo-bg)' : 'var(--admin-badge-suspendido-bg)', 
+                                color: user.isActive ? 'var(--admin-badge-activo-text)' : 'var(--admin-badge-suspendido-text)' 
+                            }}
                         >
-                            SUSCRITO
+                            {user.isActive ? 'ACTIVO' : 'INACTIVO'}
                         </Badge>
                     </div>
                     <div className="flex items-center text-muted-foreground text-sm font-medium">
                         <Mail className="h-4 w-4 mr-1.5 opacity-70" />
-                        ricardo.sanchez@gob.mx
+                        {user.email}
                     </div>
                 </div>
             </div>
@@ -109,53 +157,91 @@ export default function UserDetailsPage() {
                 <div className="grid grid-cols-2 gap-y-8 gap-x-4">
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Nombre Completo</label>
-                        <p className="font-semibold text-slate-900 mt-1.5 text-base leading-snug">Ricardo Alberto Sánchez<br/>Ruiz</p>
+                        <p className="font-semibold text-slate-900 mt-1.5 text-base leading-snug">{user.nombre} {user.apellido}</p>
                     </div>
                     <div className="col-span-1 flex justify-end items-start">
-                        <div className="rounded-lg px-4 py-2 flex flex-col items-center shadow-sm" style={{ backgroundColor: 'var(--admin-id-badge-bg)', color: 'var(--admin-id-badge-text)' }}>
-                            <span className="text-[10px] font-extrabold">ID:</span>
-                            <span className="text-sm font-black">48821</span>
+                        <div className="rounded-lg px-4 py-2 flex flex-col items-center shadow-sm w-[120px]" style={{ backgroundColor: 'var(--admin-id-badge-bg)', color: 'var(--admin-id-badge-text)' }}>
+                            <span className="text-[10px] font-extrabold mb-1">ID:</span>
+                            <span className="text-[11px] font-black leading-tight text-center break-all">
+                                {user.id.substring(0, 12)}<br/>
+                                {user.id.substring(12, 24)}<br/>
+                                {user.id.substring(24)}
+                            </span>
                         </div>
                     </div>
 
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Teléfono</label>
-                        <p className="font-semibold text-slate-900 mt-1.5">+58 55555555</p>
+                        <p className="font-semibold text-slate-900 mt-1.5">{user.telefono || 'No registrado'}</p>
                     </div>
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Ubicación</label>
-                        <p className="font-semibold text-slate-900 mt-1.5">Lara<br/>Iribarren</p>
+                        <p className="font-semibold text-slate-900 mt-1.5">{user.estado || '---'}<br/>{user.municipio || '---'}</p>
                     </div>
 
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Institución</label>
-                        <p className="font-semibold text-slate-900 mt-1.5">Secretaría de<br/>Medio Ambiente</p>
+                        <p className="font-semibold text-slate-900 mt-1.5">{user.profile?.nombreEnte || '---'}</p>
                     </div>
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Cargo</label>
-                        <p className="font-semibold text-slate-900 mt-1.5">Director de<br/>Normatividad</p>
+                        <p className="font-semibold text-slate-900 mt-1.5">{user.profile?.cargo || '---'}</p>
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-3 mt-2">
-                    <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Estatus Normativo GIRS</label>
-                    <div className="bg-white rounded-2xl p-5 flex items-center gap-4 shadow-sm">
-                        <div className="h-10 w-10 flex items-center justify-center rounded-full bg-green-100 text-green-600">
-                            <CheckCircle2 className="h-6 w-6 fill-green-500 text-white" />
+                {user.tipoUsuario === 'SERVIDOR_PUBLICO' && (() => {
+                    const statusMap: Record<string, { label: string, icon: any, color: string, bgColor: string }> = {
+                        'VIGENTE': { 
+                            label: 'Cumplimiento Total', 
+                            icon: CheckCircle2, 
+                            color: 'text-green-600', 
+                            bgColor: 'bg-green-100' 
+                        },
+                        'EN_MORA': { 
+                            label: 'Pendiente de Actualización', 
+                            icon: Ban, 
+                            color: 'text-red-600', 
+                            bgColor: 'bg-red-100' 
+                        },
+                        'EN_REVISION_TECNICA': { 
+                            label: 'En Revisión Técnica', 
+                            icon: Clock, 
+                            color: 'text-orange-600', 
+                            bgColor: 'bg-orange-100' 
+                        }
+                    };
+
+                    const currentStatus = user.profile?.estatusNormativaGirs || 'Pies de proceso';
+                    const config = statusMap[currentStatus] || { 
+                        label: currentStatus, 
+                        icon: Clock, 
+                        color: 'text-slate-600', 
+                        bgColor: 'bg-slate-100' 
+                    };
+                    const StatusIcon = config.icon;
+
+                    return (
+                        <div className="flex flex-col gap-3 mt-2">
+                            <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Estatus Normativo GIRS</label>
+                            <div className="bg-white rounded-2xl p-5 flex items-center gap-4 shadow-sm">
+                                <div className={`h-10 w-10 flex items-center justify-center rounded-full ${config.bgColor} ${config.color}`}>
+                                    <StatusIcon className={`h-6 w-6 ${currentStatus === 'VIGENTE' ? 'fill-green-500 text-white' : ''}`} />
+                                </div>
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-slate-900">{config.label}</span>
+                                    <span className="text-xs text-muted-foreground font-medium mt-0.5">Última actualización: {format(new Date(user.updatedAt), 'dd MMM yyyy', { locale: es })}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="font-bold text-slate-900">Cumplimiento Total</span>
-                            <span className="text-xs text-muted-foreground font-medium mt-0.5">Última validación: 12 Oct 2023</span>
-                        </div>
-                    </div>
-                </div>
+                    );
+                })()}
 
                 <div className="flex gap-2 p-1.5 bg-white/50 rounded-xl">
-                    <Button variant="ghost" className="flex-1 bg-white shadow-sm font-bold text-slate-800 rounded-lg h-10 border border-gray-100">
+                    <Button variant="ghost" className={`flex-1 ${user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'bg-white shadow-sm font-bold text-slate-800' : 'font-bold text-slate-400'} rounded-lg h-10 border border-gray-100`}>
                         <Building className="h-4 w-4 mr-2 text-slate-500" />
                         Servidor Público
                     </Button>
-                    <Button variant="ghost" className="flex-1 font-bold text-slate-400 rounded-lg h-10 hover:text-slate-600">
+                    <Button variant="ghost" className={`flex-1 ${user.tipoUsuario === 'ASESOR_PRIVADO' ? 'bg-white shadow-sm font-bold text-slate-800' : 'font-bold text-slate-400'} rounded-lg h-10 hover:text-slate-600`}>
                         <Shield className="h-4 w-4 mr-2" />
                         Asesor Privado
                     </Button>
@@ -198,9 +284,10 @@ export default function UserDetailsPage() {
                 <div className="flex flex-col gap-6 mt-4">
                     {/* Log Item 1 */}
                     <div className="flex gap-4">
-                        <div className="mt-1 h-10 w-10 shrink-0 bg-[var(--admin-filter-bg)] text-slate-600 rounded-full flex items-center justify-center">
-                            <UserIcon className="h-5 w-5" />
-                        </div>
+                        <Avatar className="h-10 w-10 border border-slate-200 shadow-sm mt-1">
+                            <AvatarImage src="https://api.dicebear.com/7.x/notionists/svg?seed=Maria" />
+                            <AvatarFallback>AM</AvatarFallback>
+                        </Avatar>
                         <div className="flex flex-col flex-1 pb-4 border-b border-gray-100">
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-slate-900 text-sm">Admin María</span>
@@ -212,9 +299,9 @@ export default function UserDetailsPage() {
 
                     {/* Log Item 2 (System) */}
                     <div className="flex gap-4 p-4 rounded-2xl" style={{ backgroundColor: 'var(--admin-log-gold-bg)' }}>
-                        <div className="h-10 w-10 shrink-0 bg-yellow-100/50 text-yellow-700 rounded-full flex items-center justify-center">
-                            <Banknote className="h-5 w-5" />
-                        </div>
+                        <Avatar className="h-10 w-10 border border-yellow-200 shadow-sm">
+                            <AvatarFallback className="bg-yellow-100 text-yellow-700 font-bold text-xs">SYS</AvatarFallback>
+                        </Avatar>
                         <div className="flex flex-col flex-1">
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-sm tracking-wide" style={{ color: 'var(--admin-log-gold-text)' }}>SISTEMA</span>
@@ -226,9 +313,9 @@ export default function UserDetailsPage() {
 
                     {/* Log Item 3 */}
                     <div className="flex gap-4">
-                        <div className="mt-1 h-10 w-10 shrink-0 bg-[var(--admin-filter-bg)] text-slate-600 rounded-full flex items-center justify-center">
-                            <Clock className="h-5 w-5" />
-                        </div>
+                        <Avatar className="h-10 w-10 border border-slate-200 shadow-sm mt-1">
+                            <AvatarFallback className="bg-slate-100 text-slate-600 font-bold text-xs">AG</AvatarFallback>
+                        </Avatar>
                         <div className="flex flex-col flex-1 pb-4 border-b border-gray-100">
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-slate-900 text-sm">Admin GIRS</span>
@@ -240,9 +327,10 @@ export default function UserDetailsPage() {
 
                     {/* Log Item 4 */}
                     <div className="flex gap-4 opacity-50">
-                        <div className="mt-1 h-10 w-10 shrink-0 bg-[var(--admin-filter-bg)] text-slate-600 rounded-full flex items-center justify-center">
-                            <UserIcon className="h-5 w-5" />
-                        </div>
+                        <Avatar className="h-10 w-10 border border-slate-200 shadow-sm mt-1">
+                            <AvatarImage src="https://api.dicebear.com/7.x/notionists/svg?seed=Maria" />
+                            <AvatarFallback>AM</AvatarFallback>
+                        </Avatar>
                         <div className="flex flex-col flex-1">
                             <div className="flex items-center justify-between">
                                 <span className="font-bold text-slate-900 text-sm">Admin María</span>
