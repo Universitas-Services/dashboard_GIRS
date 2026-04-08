@@ -84,7 +84,7 @@ export function UserDetailSheet({ userId }: UserDetailSheetProps) {
   };
 
   // CORRECCIÓN 2: Ya no marca error porque agregamos 'profile' a la interfaz User
-  const profile = user?.profile || {};
+  const profile = user?.profile;
 
   // CORRECCIÓN 3: Construimos el nombre completo
   const nombreCompleto = user
@@ -159,7 +159,7 @@ export function UserDetailSheet({ userId }: UserDetailSheetProps) {
                   <div className="space-y-1">
                     <Label>Institución</Label>
                     <Input
-                      value={profile.institucion || 'N/A'}
+                      value={profile?.nombreEnte || 'N/A'}
                       readOnly
                       className="bg-muted"
                     />
@@ -167,7 +167,7 @@ export function UserDetailSheet({ userId }: UserDetailSheetProps) {
                   <div className="space-y-1">
                     <Label>Cargo</Label>
                     <Input
-                      value={profile.cargo || 'N/A'}
+                      value={profile?.cargo || 'N/A'}
                       readOnly
                       className="bg-muted"
                     />
