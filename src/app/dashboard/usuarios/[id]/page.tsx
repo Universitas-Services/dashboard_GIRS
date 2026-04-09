@@ -1,17 +1,14 @@
 'use client';
 
 import { 
-  Search, HelpCircle, 
-  ArrowLeft, Lock, Shield, Mail, Phone, MapPin, Building, Briefcase, 
-  CheckCircle2, Send, Clock, UserIcon, ShieldCheck, Banknote, Hourglass, Ban
+  ArrowLeft, Shield, Mail, Building, 
+  CheckCircle2, Send, Clock, ShieldCheck, Hourglass, Ban, Search
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { useParams, useRouter } from 'next/navigation';
@@ -129,14 +126,17 @@ export default function UserDetailsPage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="flex items-center gap-6">
                 <div className="relative">
-                    <div className="h-24 w-24 rounded-3xl bg-[#0a0a0a] flex items-center justify-center overflow-hidden shadow-md">
-                        <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} alt={user.nombre} className="h-full w-full object-cover p-2" />
-                    </div>
+                    <Avatar className="h-24 w-24 rounded-3xl bg-slate-900 shadow-md">
+                        <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} alt={user.nombre} className="p-2" />
+                        <AvatarFallback className="text-2xl font-black text-white bg-slate-800">
+                            {user.nombre[0]}{user.apellido?.[0] || ''}
+                        </AvatarFallback>
+                    </Avatar>
                     {user.isActive && <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{user.nombre} {user.apellido}</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{user.nombre} {user.apellido || ''}</h2>
                         <Badge 
                             className="px-3 py-0.5 text-[10px] font-extrabold rounded-md shadow-none cursor-default"
                             style={{ 
@@ -208,7 +208,7 @@ export default function UserDetailsPage() {
                 <div className="grid grid-cols-2 gap-y-8 gap-x-4">
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Nombre Completo</label>
-                        <p className="font-semibold text-slate-900 mt-1.5 text-base leading-snug">{user.nombre} {user.apellido}</p>
+                        <p className="font-semibold text-slate-900 mt-1.5 text-base leading-snug">{user.nombre} {user.apellido || ''}</p>
                     </div>
                     <div className="col-span-1 flex justify-end items-start">
                         <div className="rounded-lg px-4 py-2 flex flex-col items-center shadow-sm w-[120px]" style={{ backgroundColor: 'var(--admin-id-badge-bg)', color: 'var(--admin-id-badge-text)' }}>
@@ -241,7 +241,7 @@ export default function UserDetailsPage() {
                 </div>
 
                 {user.tipoUsuario === 'SERVIDOR_PUBLICO' && (() => {
-                    const statusMap: Record<string, { label: string, icon: any, color: string, bgColor: string }> = {
+                    const statusMap: Record<string, { label: string, icon: React.ElementType, color: string, bgColor: string }> = {
                         'VIGENTE': { 
                             label: 'Vigente', 
                             icon: CheckCircle2, 

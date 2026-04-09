@@ -6,7 +6,6 @@ import {
     DropdownMenuContent, 
     DropdownMenuItem, 
     DropdownMenuLabel, 
-    DropdownMenuSeparator, 
     DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,17 +14,13 @@ import { dashboardService, DashboardMetrics } from '@/services/dashboardService'
 
 export function NotificationBell() {
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-    const [loading, setLoading] = useState(false);
 
     const fetchMetrics = useCallback(async () => {
-        setLoading(true);
         try {
             const data = await dashboardService.getMetrics();
             setMetrics(data);
         } catch (error) {
             console.error('Error fetching metrics for notifications:', error);
-        } finally {
-            setLoading(false);
         }
     }, []);
 

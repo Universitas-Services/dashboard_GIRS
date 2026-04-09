@@ -2,8 +2,8 @@
 
 import { 
   Search, HelpCircle, 
-  MapPin, Shield, Building2, 
-  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, MoreHorizontal, Eye
+  Shield, Building2, 
+  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, Eye
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { sdk } from '@/lib/universitas';
 import { adminService, GetUsersParams } from '@/services/adminService';
 import { User as UserType, PaginationMeta } from '@/types/user';
@@ -377,7 +377,7 @@ export default function UsuariosPage() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            users.map((user, idx) => {
+                            users.map((user) => {
                                 return (
                                     <TableRow key={user.id} className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors">
                                         <TableCell className="py-5 pl-6">

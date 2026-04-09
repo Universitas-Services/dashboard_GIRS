@@ -86,7 +86,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           console.log('AuthStore: Token expirado. Se requiere refresh.');
           shouldRefresh = true;
         }
-      } catch (error) {
+      } catch {
         // --- CORRECCIÓN CLAVE ---
         // Si jwtDecode falla (token corrupto/invalido manualmente),
         // NO hacemos logout. Asumimos que necesitamos un token nuevo limpio.

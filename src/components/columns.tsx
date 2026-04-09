@@ -2,7 +2,7 @@
 
 import Link from 'next/link'; // <--- IMPORTANTE
 import { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { FaEye } from 'react-icons/fa'; // Icono del ojo
 
@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-import { adminService } from '@/services/adminService';
+
 import { User } from '@/types/user';
 
 // NOTA: Ya no importamos UserDetailSheet porque no lo usaremos aquí.

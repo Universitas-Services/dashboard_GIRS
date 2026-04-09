@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { FaEye } from 'react-icons/fa';
 import { toast } from 'sonner';
 import { adminService } from '@/services/adminService';
@@ -38,7 +37,6 @@ interface UserDetailSheetProps {
 }
 
 export function UserDetailSheet({ userId }: UserDetailSheetProps) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
