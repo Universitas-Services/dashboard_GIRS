@@ -27,6 +27,7 @@ export interface User {
   profileCompleted: boolean;
   createdAt: string;
   updatedAt: string;
+  estadoCuenta: string;
   // 2. Agregamos la propiedad profile opcional
   profile?: UserProfile;
 }

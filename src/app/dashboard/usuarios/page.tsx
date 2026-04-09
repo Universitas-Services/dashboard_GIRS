@@ -1,18 +1,19 @@
 'use client';
 
 import { 
-  Search, Bell, HelpCircle, 
-  MapPin, Shield, Building2, 
-  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, MoreHorizontal, Eye
+  Search, HelpCircle, 
+  Shield, Building2, 
+  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, Eye
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { sdk } from '@/lib/universitas';
 import { adminService, GetUsersParams } from '@/services/adminService';
 import { User as UserType, PaginationMeta } from '@/types/user';
@@ -208,10 +209,7 @@ export default function UsuariosPage() {
           </div>
 
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
-              <button className="relative p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              <NotificationBell />
               <button className="p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
                   <HelpCircle className="h-5 w-5" />
               </button>
@@ -379,7 +377,7 @@ export default function UsuariosPage() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            users.map((user, idx) => {
+                            users.map((user) => {
                                 return (
                                     <TableRow key={user.id} className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors">
                                         <TableCell className="py-5 pl-6">

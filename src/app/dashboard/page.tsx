@@ -1,6 +1,6 @@
 'use client';
 
-import { User, ClipboardList, Monitor, Ban, Search, Bell, HelpCircle } from 'lucide-react';
+import { User, ClipboardList, Monitor, Ban, Search, HelpCircle, Clock, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,14 +8,32 @@ import { Bar, BarChart, CartesianGrid, XAxis, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useEffect, useState } from 'react';
+import { dashboardService, DashboardMetrics } from '@/services/dashboardService';
+import { NotificationBell } from '@/components/dashboard/NotificationBell';
 
 export default function DashboardPage() {
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Datos mockeados exactamente como en la imagen 1
+  useEffect(() => {
+    const fetchMetrics = async () => {
+        try {
+            const data = await dashboardService.getMetrics();
+            setMetrics(data);
+        } catch (error) {
+            console.error("Error fetching dashboard metrics:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchMetrics();
+  }, []);
+
   const statCards = [
     {
         title: 'USUARIOS TOTALES',
-        value: '1,284',
+        value: metrics?.users.total.toLocaleString() || '0',
         icon: User,
         color: 'var(--admin-card-1-text)',
         bgColor: 'var(--admin-card-1-bg)',
@@ -45,6 +63,14 @@ export default function DashboardPage() {
         bgColor: 'var(--admin-card-4-bg)',
         badge: '-2%'
     },
+    {
+        title: 'VENCIMIENTOS PRÓXIMOS',
+        value: metrics?.alertas.cantidadVencimientos.toString() || '0',
+        icon: Clock,
+        color: 'var(--admin-card-5-text)',
+        bgColor: 'var(--admin-card-5-bg)',
+        badge: 'Próx. 48h'
+    },
   ];
 
   // Datos mockeados para el gráfico de barras
@@ -67,36 +93,13 @@ export default function DashboardPage() {
     }
   };
 
-  // Datos mockeados para la tabla de Usuarios Recientes
-  const recentUsers = [
-    { 
-        initials: 'AG', 
-        name: 'Alejandro García', 
-        role: 'Asesor privado', 
-        status: 'SUSCRITO', 
-        date: '24 May 2024', 
-        badgeBg: 'var(--admin-badge-suscrito-bg)', 
-        badgeColor: 'var(--admin-badge-suscrito-text)' 
-    },
-    { 
-        initials: 'ML', 
-        name: 'Mariana López', 
-        role: 'Servidor publico', 
-        status: 'ACTIVO', 
-        date: '23 May 2024', 
-        badgeBg: 'var(--admin-badge-activo-bg)', 
-        badgeColor: 'var(--admin-badge-activo-text)' 
-    },
-    { 
-        initials: 'RC', 
-        name: 'Roberto Castillo', 
-        role: 'Asesor privado', 
-        status: 'POR PAGAR', 
-        date: '22 May 2024', 
-        badgeBg: 'var(--admin-badge-porpagar-bg)', 
-        badgeColor: 'var(--admin-badge-porpagar-text)' 
-    },
-  ];
+  if (loading) {
+    return (
+        <div className="flex items-center justify-center h-[80vh]">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 w-full pt-2">
@@ -121,23 +124,20 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
-              <button className="relative p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              <NotificationBell />
               <button className="p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
                   <HelpCircle className="h-5 w-5" />
               </button>
               <Avatar className="h-10 w-10 border-2 border-emerald-500 cursor-pointer">
-                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarImage src="https://api.dicebear.com/7.x/notionists/svg?seed=Admin" />
                   <AvatarFallback style={{ color: 'var(--admin-avatar-text)', backgroundColor: 'var(--admin-avatar-bg)' }}>AD</AvatarFallback>
               </Avatar>
           </div>
       </div>
 
       <div className="space-y-6 mt-4">
-        {/* Tarjetas Superiores estilo refactorizado (Mockeadas) */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Tarjetas Superiores estilo refactorizado (Dinámicas) */}
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           {statCards.map((stat, idx) => {
               const Icon = stat.icon;
               return (
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                               </div>
                               {stat.badge && (
                                   <span 
-                                      className="px-2 py-1 text-xs font-bold rounded-md"
+                                      className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-sm"
                                       style={{ backgroundColor: stat.bgColor, color: stat.color }}
                                   >
                                       {stat.badge}
@@ -245,26 +245,34 @@ export default function DashboardPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {recentUsers.map((user, idx) => (
-                            <TableRow key={idx} className="border-b border-gray-100 last:border-none hover:bg-gray-50/50">
+                        {metrics?.recentUsers.map((user) => (
+                            <TableRow key={user.id} className="border-b border-gray-100 last:border-none hover:bg-gray-50/50">
                                 <TableCell className="py-4">
                                     <div className="flex items-center gap-3">
-                                        <Avatar className="h-9 w-9 font-bold text-xs" style={{ backgroundColor: 'var(--admin-avatar-bg)', color: 'var(--admin-avatar-text)' }}>
-                                            <AvatarFallback style={{ backgroundColor: 'transparent' }}>{user.initials}</AvatarFallback>
+                                        <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
+                                            <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.email}`} className="object-cover" />
+                                            <AvatarFallback className="font-bold text-slate-800 text-xs text-center flex items-center justify-center w-full">
+                                                {user.nombre?.charAt(0) || ''}{user.apellido?.charAt(0) || ''}
+                                            </AvatarFallback>
                                         </Avatar>
-                                        <span className="font-semibold text-slate-800 text-sm">{user.name}</span>
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold text-slate-800 text-sm">{user.nombre} {user.apellido}</span>
+                                            <span className="text-[10px] text-muted-foreground">{user.email}</span>
+                                        </div>
                                     </div>
                                 </TableCell>
-                                <TableCell className="py-4 text-slate-600 font-medium text-sm">{user.role}</TableCell>
+                                <TableCell className="py-4 text-slate-600 font-medium text-sm capitalize">{user.role.toLowerCase()}</TableCell>
                                 <TableCell className="py-4">
                                     <Badge 
                                         className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default"
-                                        style={{ backgroundColor: user.badgeBg, color: user.badgeColor }}
+                                        style={{ backgroundColor: 'var(--admin-badge-activo-bg)', color: 'var(--admin-badge-activo-text)' }}
                                     >
-                                        {user.status}
+                                        ACTIVO
                                     </Badge>
                                 </TableCell>
-                                <TableCell className="py-4 text-slate-400 font-medium text-sm text-right">{user.date}</TableCell>
+                                <TableCell className="py-4 text-slate-400 font-medium text-sm text-right">
+                                    {new Date(user.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </TableCell>
                             </TableRow>
                         ))}
                     </TableBody>

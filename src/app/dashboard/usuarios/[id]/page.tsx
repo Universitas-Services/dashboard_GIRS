@@ -1,15 +1,16 @@
 'use client';
 
 import { 
-  Search, Bell, HelpCircle, 
-  ArrowLeft, Lock, Shield, Mail, Phone, MapPin, Building, Briefcase, 
-  CheckCircle2, Send, Clock, UserIcon, ShieldCheck, Banknote, Hourglass, Ban
+  ArrowLeft, Shield, Mail, Building, 
+  CheckCircle2, Send, Clock, ShieldCheck, Hourglass, Ban, Search
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { adminService } from '@/services/adminService';
@@ -24,6 +25,7 @@ export default function UserDetailsPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchUser = useCallback(async () => {
     if (!id) return;
@@ -41,6 +43,32 @@ export default function UserDetailsPage() {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  const handleStatusToggle = async (checked: boolean) => {
+    if (!user || !id) return;
+    
+    setIsUpdating(true);
+    
+    // Determinamos el nuevo estado según tipo de usuario y el valor del switch
+    let nuevoEstado = '';
+    if (user.tipoUsuario === 'SERVIDOR_PUBLICO') {
+        nuevoEstado = checked ? 'ACTIVO' : 'SUSPENDIDO';
+    } else {
+        nuevoEstado = checked ? 'SUSCRITO' : 'POR_PAGAR';
+    }
+
+    try {
+        await adminService.updateAccountStatus(id, { estadoCuenta: nuevoEstado });
+        toast.success(`Estado actualizado a ${nuevoEstado.replace('_', ' ')}`);
+        // Actualizamos el estado local
+        setUser(prev => prev ? { ...prev, estadoCuenta: nuevoEstado } : null);
+    } catch (error) {
+        console.error('Error updating status:', error);
+        toast.error('No se pudo actualizar el estado de cuenta');
+    } finally {
+        setIsUpdating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -85,10 +113,7 @@ export default function UserDetailsPage() {
           </div>
 
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
-              <button className="relative p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              <NotificationBell />
               <Avatar className="h-10 w-10 border-2 border-emerald-500 cursor-pointer">
                   <AvatarImage src="https://api.dicebear.com/7.x/notionists/svg?seed=Admin" />
                   <AvatarFallback style={{ color: 'var(--admin-avatar-text)', backgroundColor: 'var(--admin-avatar-bg)' }}>AD</AvatarFallback>
@@ -101,14 +126,17 @@ export default function UserDetailsPage() {
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div className="flex items-center gap-6">
                 <div className="relative">
-                    <div className="h-24 w-24 rounded-3xl bg-[#0a0a0a] flex items-center justify-center overflow-hidden shadow-md">
-                        <img src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} alt={user.nombre} className="h-full w-full object-cover p-2" />
-                    </div>
+                    <Avatar className="h-24 w-24 rounded-3xl bg-slate-900 shadow-md">
+                        <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} alt={user.nombre} className="p-2" />
+                        <AvatarFallback className="text-2xl font-black text-white bg-slate-800">
+                            {user.nombre[0]}{user.apellido?.[0] || ''}
+                        </AvatarFallback>
+                    </Avatar>
                     {user.isActive && <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-3">
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{user.nombre} {user.apellido}</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{user.nombre} {user.apellido || ''}</h2>
                         <Badge 
                             className="px-3 py-0.5 text-[10px] font-extrabold rounded-md shadow-none cursor-default"
                             style={{ 
@@ -126,20 +154,43 @@ export default function UserDetailsPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 w-full max-w-[280px]">
-                <Button className="font-black rounded-xl shadow-[0_8px_16px_-4px_rgba(0,234,0,0.4)] px-6 h-12 w-full border-none hover:opacity-95" style={{ backgroundColor: 'var(--admin-toggle-active-bg)', color: '#053b00' }}>
-                    <ShieldCheck className="h-5 w-5 mr-2 text-[#053b00]" />
-                    Gestionar Acceso
-                </Button>
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white border border-gray-100 rounded-xl h-14 flex flex-col items-center justify-center shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Envió</span>
-                        <span className="text-xs font-bold text-slate-700">Normativa</span>
+            <div className="flex flex-col gap-4 w-full max-w-[280px]">
+                <div 
+                    className="rounded-2xl p-5 flex flex-col gap-4 shadow-xl border border-white/20 transition-all"
+                    style={{ 
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
+                    }}
+                >
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                            <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <span className="text-sm font-bold text-slate-800 tracking-tight">Gestión de Acceso</span>
                     </div>
-                    <div className="bg-white border border-gray-100 rounded-xl h-14 flex flex-col items-center justify-center shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Registrar Pago</span>
-                        <span className="text-xs font-bold text-green-600 tracking-wide">$20</span>
+
+                    <div className="flex items-center justify-between bg-white p-3.5 rounded-xl border border-slate-100 shadow-inner">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'ENVIÓ' : 'REGISTRAR'}
+                            </span>
+                            <span className="text-sm font-black text-slate-700">
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Normativa' : 'Pago $20'}
+                            </span>
+                        </div>
+                        <Switch 
+                            disabled={isUpdating}
+                            checked={user.tipoUsuario === 'SERVIDOR_PUBLICO' ? user.estadoCuenta === 'ACTIVO' : user.estadoCuenta === 'SUSCRITO'}
+                            onCheckedChange={handleStatusToggle}
+                            className="data-[state=checked]:bg-emerald-500"
+                        />
                     </div>
+                    
+                    {isUpdating && (
+                        <p className="text-[10px] text-center font-bold text-emerald-600 animate-pulse uppercase tracking-widest">
+                            Actualizando...
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
@@ -157,7 +208,7 @@ export default function UserDetailsPage() {
                 <div className="grid grid-cols-2 gap-y-8 gap-x-4">
                     <div className="col-span-1">
                         <label className="text-[10px] font-extrabold tracking-wider text-green-800/80 uppercase">Nombre Completo</label>
-                        <p className="font-semibold text-slate-900 mt-1.5 text-base leading-snug">{user.nombre} {user.apellido}</p>
+                        <p className="font-semibold text-slate-900 mt-1.5 text-base leading-snug">{user.nombre} {user.apellido || ''}</p>
                     </div>
                     <div className="col-span-1 flex justify-end items-start">
                         <div className="rounded-lg px-4 py-2 flex flex-col items-center shadow-sm w-[120px]" style={{ backgroundColor: 'var(--admin-id-badge-bg)', color: 'var(--admin-id-badge-text)' }}>
@@ -190,21 +241,21 @@ export default function UserDetailsPage() {
                 </div>
 
                 {user.tipoUsuario === 'SERVIDOR_PUBLICO' && (() => {
-                    const statusMap: Record<string, { label: string, icon: any, color: string, bgColor: string }> = {
+                    const statusMap: Record<string, { label: string, icon: React.ElementType, color: string, bgColor: string }> = {
                         'VIGENTE': { 
-                            label: 'Cumplimiento Total', 
+                            label: 'Vigente', 
                             icon: CheckCircle2, 
                             color: 'text-green-600', 
                             bgColor: 'bg-green-100' 
                         },
                         'EN_MORA': { 
-                            label: 'Pendiente de Actualización', 
+                            label: 'En mora', 
                             icon: Ban, 
                             color: 'text-red-600', 
                             bgColor: 'bg-red-100' 
                         },
                         'EN_REVISION_TECNICA': { 
-                            label: 'En Revisión Técnica', 
+                            label: 'En revisión técnica', 
                             icon: Clock, 
                             color: 'text-orange-600', 
                             bgColor: 'bg-orange-100' 
