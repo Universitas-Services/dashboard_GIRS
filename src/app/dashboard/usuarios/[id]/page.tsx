@@ -192,19 +192,19 @@ export default function UserDetailsPage() {
                 {user.tipoUsuario === 'SERVIDOR_PUBLICO' && (() => {
                     const statusMap: Record<string, { label: string, icon: any, color: string, bgColor: string }> = {
                         'VIGENTE': { 
-                            label: 'Cumplimiento Total', 
+                            label: 'Vigente', 
                             icon: CheckCircle2, 
                             color: 'text-green-600', 
                             bgColor: 'bg-green-100' 
                         },
                         'EN_MORA': { 
-                            label: 'Pendiente de Actualización', 
+                            label: 'En mora', 
                             icon: Ban, 
                             color: 'text-red-600', 
                             bgColor: 'bg-red-100' 
                         },
                         'EN_REVISION_TECNICA': { 
-                            label: 'En Revisión Técnica', 
+                            label: 'En revisión técnica', 
                             icon: Clock, 
                             color: 'text-orange-600', 
                             bgColor: 'bg-orange-100' 
