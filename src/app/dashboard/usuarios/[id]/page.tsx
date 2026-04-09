@@ -1,7 +1,7 @@
 'use client';
 
 import { 
-  Search, Bell, HelpCircle, 
+  Search, HelpCircle, 
   ArrowLeft, Lock, Shield, Mail, Phone, MapPin, Building, Briefcase, 
   CheckCircle2, Send, Clock, UserIcon, ShieldCheck, Banknote, Hourglass, Ban
 } from 'lucide-react';
@@ -10,6 +10,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { adminService } from '@/services/adminService';
@@ -24,6 +28,7 @@ export default function UserDetailsPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchUser = useCallback(async () => {
     if (!id) return;
@@ -41,6 +46,32 @@ export default function UserDetailsPage() {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  const handleStatusToggle = async (checked: boolean) => {
+    if (!user || !id) return;
+    
+    setIsUpdating(true);
+    
+    // Determinamos el nuevo estado según tipo de usuario y el valor del switch
+    let nuevoEstado = '';
+    if (user.tipoUsuario === 'SERVIDOR_PUBLICO') {
+        nuevoEstado = checked ? 'ACTIVO' : 'SUSPENDIDO';
+    } else {
+        nuevoEstado = checked ? 'SUSCRITO' : 'POR_PAGAR';
+    }
+
+    try {
+        await adminService.updateAccountStatus(id, { estadoCuenta: nuevoEstado });
+        toast.success(`Estado actualizado a ${nuevoEstado.replace('_', ' ')}`);
+        // Actualizamos el estado local
+        setUser(prev => prev ? { ...prev, estadoCuenta: nuevoEstado } : null);
+    } catch (error) {
+        console.error('Error updating status:', error);
+        toast.error('No se pudo actualizar el estado de cuenta');
+    } finally {
+        setIsUpdating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -85,10 +116,7 @@ export default function UserDetailsPage() {
           </div>
 
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
-              <button className="relative p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              <NotificationBell />
               <Avatar className="h-10 w-10 border-2 border-emerald-500 cursor-pointer">
                   <AvatarImage src="https://api.dicebear.com/7.x/notionists/svg?seed=Admin" />
                   <AvatarFallback style={{ color: 'var(--admin-avatar-text)', backgroundColor: 'var(--admin-avatar-bg)' }}>AD</AvatarFallback>
@@ -126,20 +154,43 @@ export default function UserDetailsPage() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 w-full max-w-[280px]">
-                <Button className="font-black rounded-xl shadow-[0_8px_16px_-4px_rgba(0,234,0,0.4)] px-6 h-12 w-full border-none hover:opacity-95" style={{ backgroundColor: 'var(--admin-toggle-active-bg)', color: '#053b00' }}>
-                    <ShieldCheck className="h-5 w-5 mr-2 text-[#053b00]" />
-                    Gestionar Acceso
-                </Button>
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white border border-gray-100 rounded-xl h-14 flex flex-col items-center justify-center shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Envió</span>
-                        <span className="text-xs font-bold text-slate-700">Normativa</span>
+            <div className="flex flex-col gap-4 w-full max-w-[280px]">
+                <div 
+                    className="rounded-2xl p-5 flex flex-col gap-4 shadow-xl border border-white/20 transition-all"
+                    style={{ 
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)'
+                    }}
+                >
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                            <ShieldCheck className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <span className="text-sm font-bold text-slate-800 tracking-tight">Gestión de Acceso</span>
                     </div>
-                    <div className="bg-white border border-gray-100 rounded-xl h-14 flex flex-col items-center justify-center shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Registrar Pago</span>
-                        <span className="text-xs font-bold text-green-600 tracking-wide">$20</span>
+
+                    <div className="flex items-center justify-between bg-white p-3.5 rounded-xl border border-slate-100 shadow-inner">
+                        <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'ENVIÓ' : 'REGISTRAR'}
+                            </span>
+                            <span className="text-sm font-black text-slate-700">
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Normativa' : 'Pago $20'}
+                            </span>
+                        </div>
+                        <Switch 
+                            disabled={isUpdating}
+                            checked={user.tipoUsuario === 'SERVIDOR_PUBLICO' ? user.estadoCuenta === 'ACTIVO' : user.estadoCuenta === 'SUSCRITO'}
+                            onCheckedChange={handleStatusToggle}
+                            className="data-[state=checked]:bg-emerald-500"
+                        />
                     </div>
+                    
+                    {isUpdating && (
+                        <p className="text-[10px] text-center font-bold text-emerald-600 animate-pulse uppercase tracking-widest">
+                            Actualizando...
+                        </p>
+                    )}
                 </div>
             </div>
         </div>

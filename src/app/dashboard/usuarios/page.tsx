@@ -1,7 +1,7 @@
 'use client';
 
 import { 
-  Search, Bell, HelpCircle, 
+  Search, HelpCircle, 
   MapPin, Shield, Building2, 
   FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, MoreHorizontal, Eye
 } from 'lucide-react';
@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -208,10 +209,7 @@ export default function UsuariosPage() {
           </div>
 
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
-              <button className="relative p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute top-2 right-2 h-2 w-2 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
+              <NotificationBell />
               <button className="p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
                   <HelpCircle className="h-5 w-5" />
               </button>

@@ -13,6 +13,17 @@ export interface DashboardMetrics {
         totalMessages: number;
         totalSessions: number;
     };
+    alertas: {
+        proximosAVencer: {
+            id: string;
+            email: string;
+            nombre: string;
+            apellido: string;
+            role: string;
+            createdAt: string;
+        }[];
+        cantidadVencimientos: number;
+    };
     recentUsers: {
         id: string;
         email: string;

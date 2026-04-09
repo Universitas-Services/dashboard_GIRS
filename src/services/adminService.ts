@@ -80,5 +80,10 @@ export const adminService = {
     });
     return response.data;
   },
+  
+  updateAccountStatus: async (id: string, data: { estadoCuenta: string; fechaVencimientoAcceso?: string }) => {
+    const response = await api.patch(`/admin/users/${id}/estado-cuenta`, data);
+    return response.data;
+  },
 
 };
