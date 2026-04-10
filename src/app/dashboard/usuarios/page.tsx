@@ -3,13 +3,13 @@
 import { 
   HelpCircle, 
   Shield, Building2, 
-  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Ban, ShieldCheck
+  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Ban, ShieldCheck, Search
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

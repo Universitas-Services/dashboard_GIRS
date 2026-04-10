@@ -2,9 +2,8 @@
 
 import { 
   ArrowLeft, Shield, Mail, Building, 
-  CheckCircle2, Send, Clock, ShieldCheck, Hourglass, Ban, Search
+  CheckCircle2, Send, Clock, ShieldCheck, Hourglass, Ban
 } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

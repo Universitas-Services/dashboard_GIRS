@@ -4,7 +4,11 @@ import {
     ClipboardList, Ban, Building2, Shield, ShieldCheck, Users, HelpCircle, Loader2
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Bar, BarChart, CartesianGrid, XAxis, Cell, PieChart, Pie, ResponsiveContainer } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useEffect, useState } from 'react';
 import { dashboardService, DashboardMetrics } from '@/services/dashboardService';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
@@ -13,11 +17,6 @@ import Link from 'next/link';
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const handleCardClick = (cardFilter: { type: string, value?: string }) => {
-    // Lógica de navegación o filtrado
-    console.log("Filtro aplicado:", cardFilter);
-  };
 
   const fetchMetrics = async () => {
     try {
