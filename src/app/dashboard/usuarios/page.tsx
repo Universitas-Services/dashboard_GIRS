@@ -1,9 +1,9 @@
 'use client';
 
 import { 
-  Search, HelpCircle, 
+  HelpCircle, 
   Shield, Building2, 
-  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, Eye, ShieldCheck
+  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Ban, ShieldCheck
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -270,13 +270,13 @@ export default function UsuariosPage() {
     },
   ];
 
-  const handleCardClick = (filter: any) => {
-    if (filter.type === 'reset') {
+  const handleCardClick = (cardFilter: { type: string, value?: string }) => {
+    if (cardFilter.type === 'reset') {
         clearFilters();
-    } else if (filter.type === 'tipo') {
-        handleTipoUsuarioChange(filter.value);
-    } else if (filter.type === 'estadoCuenta') {
-        handleStatusChange(filter.value);
+    } else if (cardFilter.type === 'tipo') {
+        handleTipoUsuarioChange(cardFilter.value || '');
+    } else if (cardFilter.type === 'estadoCuenta') {
+        handleStatusChange(cardFilter.value || '');
     }
   };
 
