@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useEffect, useState } from 'react';
 import { dashboardService, DashboardMetrics } from '@/services/dashboardService';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
@@ -230,9 +231,11 @@ export default function DashboardPage() {
                 <CardTitle className="text-xl font-bold tracking-tight" style={{ color: 'var(--admin-text-title)' }}>
                     Usuarios Recientes
                 </CardTitle>
-                <button className="text-sm font-bold transition-colors hover:underline" style={{ color: 'var(--admin-text-link)' }}>
-                    Ver todos
-                </button>
+                <Link href="/dashboard/usuarios">
+                    <button className="text-sm font-bold transition-colors hover:underline" style={{ color: 'var(--admin-text-link)' }}>
+                        Ver todos
+                    </button>
+                </Link>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -248,7 +251,7 @@ export default function DashboardPage() {
                         {metrics?.recentUsers.map((user) => (
                             <TableRow key={user.id} className="border-b border-gray-100 last:border-none hover:bg-gray-50/50">
                                 <TableCell className="py-4">
-                                    <div className="flex items-center gap-3">
+                                    <Link href={`/dashboard/usuarios/${user.id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                                         <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
                                             <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.email}`} className="object-cover" />
                                             <AvatarFallback className="font-bold text-slate-800 text-xs text-center flex items-center justify-center w-full">
@@ -259,7 +262,7 @@ export default function DashboardPage() {
                                             <span className="font-semibold text-slate-800 text-sm">{user.nombre} {user.apellido}</span>
                                             <span className="text-[10px] text-muted-foreground">{user.email}</span>
                                         </div>
-                                    </div>
+                                    </Link>
                                 </TableCell>
                                 <TableCell className="py-4 text-slate-600 font-medium text-sm capitalize">{user.role.toLowerCase()}</TableCell>
                                 <TableCell className="py-4">

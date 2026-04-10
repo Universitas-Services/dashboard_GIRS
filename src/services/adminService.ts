@@ -11,6 +11,7 @@ export interface GetUsersParams {
   estado?: string;
   municipio?: string;
   tipoUsuario?: string;
+  estadoCuenta?: string;
 }
 
 // Estructura de respuesta paginada
@@ -40,6 +41,7 @@ export const adminService = {
       if (params.estado) cleanParams.estado = params.estado;
       if (params.municipio) cleanParams.municipio = params.municipio;
       if (params.tipoUsuario) cleanParams.tipoUsuario = params.tipoUsuario;
+      if (params.estadoCuenta) cleanParams.estadoCuenta = params.estadoCuenta;
     }
 
     // Pasamos los cleanParams a la petición axios
