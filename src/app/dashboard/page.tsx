@@ -1,6 +1,6 @@
 'use client';
 
-import { User, ClipboardList, Monitor, Ban, Search, HelpCircle, Clock, Loader2 } from 'lucide-react';
+import { User, ClipboardList, Monitor, Ban, Search, HelpCircle, Clock, Loader2, Building2, Shield } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -264,7 +264,14 @@ export default function DashboardPage() {
                                         </div>
                                     </Link>
                                 </TableCell>
-                                <TableCell className="py-4 text-slate-600 font-medium text-sm capitalize">{user.role.toLowerCase()}</TableCell>
+                                <TableCell className="py-4">
+                                    <div className="flex items-center gap-2 text-slate-600 font-medium text-sm">
+                                        {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? <Building2 className="h-4 w-4 text-emerald-600" /> : <Shield className="h-4 w-4 text-blue-600" />}
+                                        {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Servidor Público' : 
+                                         user.tipoUsuario === 'ASESOR_PRIVADO' ? 'Asesor Privado' : 
+                                         (user.tipoUsuario || 'Usuario')}
+                                    </div>
+                                </TableCell>
                                 <TableCell className="py-4">
                                     <Badge 
                                         className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default"
