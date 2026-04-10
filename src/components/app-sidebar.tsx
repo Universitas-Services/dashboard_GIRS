@@ -90,11 +90,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               {/* Opción Inicio */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Panel principal">
-                  <a href="/dashboard">
+                <SidebarMenuButton 
+                  asChild 
+                  tooltip="Panel principal"
+                  onClick={() => {
+                    // Si ya estamos en el dashboard, disparamos el evento de refresco
+                    if (window.location.pathname === '/dashboard') {
+                      window.dispatchEvent(new CustomEvent('refresh-dashboard'));
+                    }
+                  }}
+                >
+                  <Link href="/dashboard">
                     <LayoutDashboard />
                     <span>Panel principal</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

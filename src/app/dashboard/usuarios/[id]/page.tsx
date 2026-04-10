@@ -23,6 +23,16 @@ export default function UserDetailsPage() {
   const params = useParams();
   const id = params.id as string;
 
+  const statusConfig: Record<string, { label: string, color: string, bgColor: string }> = {
+    'POR_ACTIVAR': { label: 'Por Activar', color: '#b45309', bgColor: '#fef3c7' },
+    'PRUEBA_GRATUITA': { label: 'Prueba Gratis', color: '#1d4ed8', bgColor: '#dbeafe' },
+    'ACTIVO': { label: 'Activo', color: '#15803d', bgColor: '#dcfce7' },
+    'SUSPENDIDO': { label: 'Suspendido', color: '#be123c', bgColor: '#ffe4e6' },
+    'POR_PAGAR': { label: 'Por Pagar', color: '#ea580c', bgColor: '#ffedd5' },
+    'POR_RENOVAR': { label: 'Por Renovar', color: '#701a75', bgColor: '#fdf4ff' },
+    'SUSCRITO': { label: 'Suscrito', color: '#3730a3', bgColor: '#e0e7ff' }
+  };
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -102,14 +112,7 @@ export default function UserDetailsPage() {
           </div>
           
           <div className="flex-1 flex justify-center w-full max-w-md mx-auto">
-              <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                      placeholder="Buscar por nombre o ID de usuario..." 
-                      className="w-full pl-9 border-none rounded-full h-10 shadow-sm"
-                      style={{ backgroundColor: 'var(--admin-search-bg)' }}
-                  />
-              </div>
+              {/* Buscador removido de la vista de detalle */}
           </div>
 
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
@@ -132,19 +135,19 @@ export default function UserDetailsPage() {
                             {user.nombre[0]}{user.apellido?.[0] || ''}
                         </AvatarFallback>
                     </Avatar>
-                    {user.isActive && <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>}
+                    {(user.estadoCuenta === 'ACTIVO' || user.estadoCuenta === 'SUSCRITO') && <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500"></div>}
                 </div>
                 <div className="flex flex-col gap-1.5">
                     <div className="flex items-center gap-3">
                         <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">{user.nombre} {user.apellido || ''}</h2>
                         <Badge 
-                            className="px-3 py-0.5 text-[10px] font-extrabold rounded-md shadow-none cursor-default"
+                            className="px-3 py-0.5 text-[10px] font-extrabold rounded-md shadow-none cursor-default uppercase"
                             style={{ 
-                                backgroundColor: user.isActive ? 'var(--admin-badge-activo-bg)' : 'var(--admin-badge-suspendido-bg)', 
-                                color: user.isActive ? 'var(--admin-badge-activo-text)' : 'var(--admin-badge-suspendido-text)' 
+                                backgroundColor: statusConfig[user.estadoCuenta]?.bgColor || '#f1f5f9', 
+                                color: statusConfig[user.estadoCuenta]?.color || '#64748b' 
                             }}
                         >
-                            {user.isActive ? 'ACTIVO' : 'INACTIVO'}
+                            {statusConfig[user.estadoCuenta]?.label || user.estadoCuenta}
                         </Badge>
                     </div>
                     <div className="flex items-center text-muted-foreground text-sm font-medium">

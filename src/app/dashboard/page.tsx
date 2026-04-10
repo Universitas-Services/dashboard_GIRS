@@ -1,10 +1,13 @@
 'use client';
 
-import { User, ClipboardList, Monitor, Ban, Search, HelpCircle, Clock, Loader2, Building2, Shield } from 'lucide-react';
+import { 
+    User, ClipboardList, Monitor, Ban, Search, HelpCircle, Clock, Loader2, Building2, Shield, 
+    TrendingUp, TrendingDown, Users 
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Bar, BarChart, CartesianGrid, XAxis, Cell } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, Cell, PieChart, Pie, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -17,52 +20,78 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchMetrics = async () => {
+    try {
+      setLoading(true);
+      const data = await dashboardService.getMetrics();
+      setMetrics(data);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMetrics = async () => {
-        try {
-            const data = await dashboardService.getMetrics();
-            setMetrics(data);
-        } catch (error) {
-            console.error("Error fetching dashboard metrics:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
     fetchMetrics();
+
+    // Escuchar evento personalizado para refrescar datos desde el sidebar
+    const handleRefresh = () => {
+      console.log("Refrescando métricas...");
+      fetchMetrics();
+    };
+
+    window.addEventListener('refresh-dashboard', handleRefresh);
+    window.addEventListener('focus', handleRefresh); // También refrescar al volver a la pestaña
+
+    return () => {
+      window.removeEventListener('refresh-dashboard', handleRefresh);
+      window.removeEventListener('focus', handleRefresh);
+    };
   }, []);
+
+  // Helper para calcular porcentajes de crecimiento
+  const calculateGrowth = (actual: number, anterior: number) => {
+      if (anterior === 0) return actual > 0 ? 100 : 0;
+      return ((actual - anterior) / anterior) * 100;
+  };
 
   const statCards = [
     {
         title: 'USUARIOS TOTALES',
         value: metrics?.users.total.toLocaleString() || '0',
-        icon: User,
+        icon: Users,
         color: 'var(--admin-card-1-text)',
         bgColor: 'var(--admin-card-1-bg)',
-        badge: '+12%'
+        badge: (() => {
+            if (!metrics) return '';
+            const growth = calculateGrowth(metrics.analytics.comparativa.mensual.actual, metrics.analytics.comparativa.mensual.anterior);
+            return `${growth >= 0 ? '+' : ''}${growth.toFixed(0)}% Mes`;
+        })()
     },
     {
-        title: 'PENDIENTES POR ACTIVAR',
-        value: '42',
+        title: 'PENDIENTES POR VERIFICAR',
+        value: (metrics?.analytics.usuariosNoVerificados || 0).toString(),
         icon: ClipboardList,
         color: 'var(--admin-card-2-text)',
         bgColor: 'var(--admin-card-2-bg)',
-        badge: '42 Hoy'
+        badge: `${metrics?.analytics.crecimientoHoy || 0} Hoy`
     },
     {
-        title: 'CUENTAS SUSCRITAS',
-        value: '912',
-        icon: Monitor,
+        title: 'USUARIOS VERIFICADOS',
+        value: (metrics?.users.verified || 0).toString(),
+        icon: Shield,
         color: 'var(--admin-card-3-text)',
         bgColor: 'var(--admin-card-3-bg)',
-        badge: '71%'
+        badge: 'Verificados'
     },
     {
         title: 'SUSPENSIONES RECIENTES',
-        value: '8',
+        value: (metrics?.analytics.suspensionesRecientes || 0).toString(),
         icon: Ban,
         color: 'var(--admin-card-4-text)',
         bgColor: 'var(--admin-card-4-bg)',
-        badge: '-2%'
+        badge: 'Recientes'
     },
     {
         title: 'VENCIMIENTOS PRÓXIMOS',
@@ -74,24 +103,36 @@ export default function DashboardPage() {
     },
   ];
 
-  // Datos mockeados para el gráfico de barras
-  const chartData = [
-    { date: "01 MAY", users: 150 },
-    { date: "04 MAY", users: 200 },
-    { date: "08 MAY", users: 180 },
-    { date: "11 MAY", users: 250 },
-    { date: "15 MAY", users: 310 },
-    { date: "18 MAY", users: 280 },
-    { date: "22 MAY", users: 380, isHighlight: true },
-    { date: "26 MAY", users: 310 },
-    { date: "30 MAY", users: 240 },
+  // Datos para el gráfico de barras (Invertido)
+  const chartData = metrics?.analytics.graficoCrecimiento.slice().reverse().map((item, idx, arr) => {
+      const maxVal = Math.max(...arr.map(a => a.cantidad));
+      return {
+          date: item.etiqueta.toUpperCase(),
+          users: item.cantidad,
+          isHighlight: item.cantidad === maxVal && item.cantidad > 0
+      };
+  }) || [];
+
+  // Datos para el gráfico de Dona
+  const donutData = [
+      { name: 'Públicos', value: metrics?.analytics.porTipousuario.servidoresPublicos || 0, color: '#10b981' },
+      { name: 'Asesores', value: metrics?.analytics.porTipousuario.asesoresPrivados || 0, color: '#3b82f6' }
   ];
 
   const chartConfig = {
-    users: {
-        label: "Usuarios",
-        color: "var(--admin-chart-bar)",
-    }
+    users: { label: "Usuarios", color: "var(--admin-chart-bar)" },
+    publicos: { label: "Servidores Públicos", color: "#10b981" },
+    asesores: { label: "Asesores Privados", color: "#3b82f6" }
+  };
+
+  const statusConfig: Record<string, { label: string, color: string, bgColor: string }> = {
+    'POR_ACTIVAR': { label: 'Por Activar', color: '#b45309', bgColor: '#fef3c7' },
+    'PRUEBA_GRATUITA': { label: 'Prueba Gratis', color: '#1d4ed8', bgColor: '#dbeafe' },
+    'ACTIVO': { label: 'Activo', color: '#15803d', bgColor: '#dcfce7' },
+    'SUSPENDIDO': { label: 'Suspendido', color: '#be123c', bgColor: '#ffe4e6' },
+    'POR_PAGAR': { label: 'Por Pagar', color: '#ea580c', bgColor: '#ffedd5' },
+    'POR_RENOVAR': { label: 'Por Renovar', color: '#701a75', bgColor: '#fdf4ff' },
+    'SUSCRITO': { label: 'Suscrito', color: '#3730a3', bgColor: '#e0e7ff' }
   };
 
   if (loading) {
@@ -108,22 +149,11 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-col">
               <h1 className="text-2xl font-extrabold whitespace-nowrap" style={{ color: 'var(--admin-text-title)' }}>
-                  Panel de Control
+                  Panel Administrativo
               </h1>
-              <p className="text-muted-foreground text-xs font-medium mt-0.5">Métricas clave y estado general del sistema.</p>
+              <p className="text-muted-foreground text-xs font-medium mt-0.5">Métricas avanzadas y análisis de crecimiento.</p>
           </div>
           
-          <div className="flex-1 flex justify-center w-full max-w-md mx-auto">
-              <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                      placeholder="Buscar por nombre o ID de usuario..." 
-                      className="w-full pl-9 border-none rounded-full h-10 shadow-sm"
-                      style={{ backgroundColor: 'var(--admin-search-bg)' }}
-                  />
-              </div>
-          </div>
-
           <div className="flex items-center gap-4 justify-end min-w-[140px]">
               <NotificationBell />
               <button className="p-2 text-muted-foreground hover:bg-slate-100 rounded-full transition-colors">
@@ -137,7 +167,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-6 mt-4">
-        {/* Tarjetas Superiores estilo refactorizado (Dinámicas) */}
+        {/* Tarjetas Superiores (5 Originales) */}
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           {statCards.map((stat, idx) => {
               const Icon = stat.icon;
@@ -161,10 +191,10 @@ export default function DashboardPage() {
                               )}
                           </div>
                           <div className="flex flex-col gap-1 mt-2">
-                              <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase">
+                              <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase opacity-80">
                                   {stat.title}
                               </span>
-                              <span className="text-3xl font-extrabold" style={{ color: 'var(--admin-text-title)' }}>
+                              <span className="text-3xl font-black" style={{ color: 'var(--admin-text-title)' }}>
                                   {stat.value}
                               </span>
                           </div>
@@ -174,58 +204,95 @@ export default function DashboardPage() {
           })}
         </div>
 
-        {/* Gráfico de Barras de Crecimiento (Mockeado) */}
-        <Card className="rounded-xl border-none shadow-sm pt-6 bg-white w-full">
-            <CardHeader className="flex flex-row items-center justify-between pb-8">
-                <div>
+        {/* Fila 3: Gráficos (70% Evolution / 30% Distribution) */}
+        <div className="grid gap-6 md:grid-cols-10">
+            {/* Gráfico de Barras (70%) */}
+            <Card className="md:col-span-7 rounded-xl border-none shadow-sm pt-6 bg-white overflow-hidden">
+                <CardHeader className="pb-8">
                     <CardTitle className="text-xl font-bold tracking-tight" style={{ color: 'var(--admin-text-title)' }}>
-                        Crecimiento de Usuarios
+                        Evolución de Usuarios
                     </CardTitle>
-                    <CardDescription className="text-sm font-medium text-muted-foreground mt-1">
-                        Análisis comparativo de los últimos 30 días
+                    <CardDescription className="text-sm font-medium text-muted-foreground">
+                        Análisis comparativo semana a semana del crecimiento orgánico.
                     </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center p-1.5 rounded-full" style={{ backgroundColor: 'var(--admin-toggle-bg)' }}>
-                        <Badge 
-                            className="px-5 py-1.5 text-xs font-bold rounded-full border-none shadow-none hover:opacity-90 cursor-pointer"
-                            style={{ backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' }}
-                        >
-                            Mes
-                        </Badge>
-                        <Badge 
-                            variant="secondary"
-                            className="px-5 py-1.5 text-xs font-bold rounded-full bg-transparent border-none shadow-none text-muted-foreground hover:bg-transparent hover:text-foreground cursor-pointer"
-                        >
-                            Semana
-                        </Badge>
-                    </div>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <ChartContainer config={chartConfig} className="h-[350px] w-full">
-                    <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barCategoryGap="8%">
-                        <CartesianGrid vertical={false} stroke="#f0f0f0" />
-                        <XAxis 
-                            dataKey="date" 
-                            tickLine={false} 
-                            axisLine={false} 
-                            tick={{ fill: '#a1a1aa', fontSize: 10, fontWeight: 600 }}
-                            tickMargin={10}
-                            tickFormatter={(value) => ['01 MAY', '08 MAY', '15 MAY', '22 MAY', '30 MAY'].includes(value) ? value : ''}
-                        />
-                        <ChartTooltip cursor={{fill: 'transparent'}} content={<ChartTooltipContent hideLabel />} />
-                        <Bar dataKey="users" radius={[6, 6, 0, 0]}>
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.isHighlight ? 'var(--admin-chart-bar-highlight)' : 'var(--admin-chart-bar)'} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ChartContainer>
-            </CardContent>
-        </Card>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }} barCategoryGap="12%">
+                            <CartesianGrid vertical={false} stroke="#f8fafc" />
+                            <XAxis 
+                                dataKey="date" 
+                                tickLine={false} 
+                                axisLine={false} 
+                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: '900' }}
+                                tickMargin={10}
+                            />
+                            <ChartTooltip cursor={{fill: '#f1f5f9'}} content={<ChartTooltipContent hideLabel />} />
+                            <Bar dataKey="users" radius={[6, 6, 0, 0]}>
+                                {chartData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={entry.isHighlight ? 'var(--admin-chart-bar-highlight)' : 'var(--admin-chart-bar)'} />
+                                ))}
+                            </Bar>
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
 
-        {/* Tabla de Usuarios Recientes */}
+            {/* Gráfico de Dona (30%) */}
+            <Card className="md:col-span-3 rounded-xl border-none shadow-sm pt-6 bg-white overflow-hidden">
+                <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold tracking-tight" style={{ color: 'var(--admin-text-title)' }}>
+                        Distribución
+                    </CardTitle>
+                    <CardDescription className="text-xs font-medium text-muted-foreground">
+                        Por tipo de usuario registrado.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center">
+                    <div className="h-[220px] w-full relative">
+                        <ChartContainer config={chartConfig} className="h-full w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={donutData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={55}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {donutData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </ChartContainer>
+                        {/* Texto central del Donut */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-2xl font-black text-slate-800">{metrics?.users.total}</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
+                        </div>
+                    </div>
+                    {/* Leyenda personalizada */}
+                    <div className="flex flex-col gap-2 w-full mt-4">
+                        {donutData.map((item, idx) => (
+                            <div key={idx} className="flex items-center justify-between text-[11px] font-bold">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                    <span className="text-slate-500">{item.name}</span>
+                                </div>
+                                <span className="text-slate-800">{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        {/* Tabla de Usuarios Recientes - Manteniendo lo existente */}
         <Card className="rounded-xl border-none shadow-sm pt-6 bg-white w-full">
             <CardHeader className="flex flex-row items-center justify-between pb-6">
                 <CardTitle className="text-xl font-bold tracking-tight" style={{ color: 'var(--admin-text-title)' }}>
@@ -241,9 +308,9 @@ export default function DashboardPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-b border-gray-100 hover:bg-transparent">
-                            <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 w-[300px]">Nombre</TableHead>
-                            <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 w-[200px]">Rol</TableHead>
-                            <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 w-[150px]">Estado</TableHead>
+                            <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 w-[350px]">Nombre</TableHead>
+                            <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 w-[250px] text-center">Tipo</TableHead>
+                            <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 w-[180px] text-center">Estado</TableHead>
                             <TableHead className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase h-10 text-right">Fecha</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -265,19 +332,20 @@ export default function DashboardPage() {
                                     </Link>
                                 </TableCell>
                                 <TableCell className="py-4">
-                                    <div className="flex items-center gap-2 text-slate-600 font-medium text-sm">
+                                    <div className="flex items-center justify-center gap-2 text-slate-600 font-medium text-sm">
                                         {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? <Building2 className="h-4 w-4 text-emerald-600" /> : <Shield className="h-4 w-4 text-blue-600" />}
-                                        {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Servidor Público' : 
-                                         user.tipoUsuario === 'ASESOR_PRIVADO' ? 'Asesor Privado' : 
-                                         (user.tipoUsuario || 'Usuario')}
+                                        {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Servidor Público' : 'Asesor Privado'}
                                     </div>
                                 </TableCell>
-                                <TableCell className="py-4">
+                                <TableCell className="py-4 text-center">
                                     <Badge 
-                                        className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default"
-                                        style={{ backgroundColor: 'var(--admin-badge-activo-bg)', color: 'var(--admin-badge-activo-text)' }}
+                                        className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default uppercase whitespace-nowrap"
+                                        style={{ 
+                                            backgroundColor: statusConfig[user.estadoCuenta]?.bgColor || '#f1f5f9', 
+                                            color: statusConfig[user.estadoCuenta]?.color || '#64748b' 
+                                        }}
                                     >
-                                        ACTIVO
+                                        {statusConfig[user.estadoCuenta]?.label || user.estadoCuenta || 'Desconocido'}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="py-4 text-slate-400 font-medium text-sm text-right">
