@@ -2,7 +2,7 @@
 
 import { 
     User, ClipboardList, Monitor, Ban, Search, HelpCircle, Clock, Loader2, Building2, Shield, 
-    TrendingUp, TrendingDown, Users 
+    TrendingUp, TrendingDown, Users, ShieldCheck
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -67,39 +67,53 @@ export default function DashboardPage() {
             if (!metrics) return '';
             const growth = calculateGrowth(metrics.analytics.comparativa.mensual.actual, metrics.analytics.comparativa.mensual.anterior);
             return `${growth >= 0 ? '+' : ''}${growth.toFixed(0)}% Mes`;
-        })()
+        })(),
+        link: '/dashboard/usuarios'
     },
     {
-        title: 'PENDIENTES POR VERIFICAR',
-        value: (metrics?.analytics.usuariosNoVerificados || 0).toString(),
-        icon: ClipboardList,
-        color: 'var(--admin-card-2-text)',
-        bgColor: 'var(--admin-card-2-bg)',
-        badge: `${metrics?.analytics.crecimientoHoy || 0} Hoy`
+        title: 'SERVIDORES PÚBLICOS',
+        value: metrics?.analytics.porTipousuario.servidoresPublicos.toLocaleString() || '0',
+        icon: Building2,
+        color: '#10b981',
+        bgColor: '#dcfce7',
+        badge: 'Públicos',
+        link: '/dashboard/usuarios?tipoUsuario=SERVIDOR_PUBLICO'
+    },
+    {
+        title: 'ASESORES PRIVADOS',
+        value: metrics?.analytics.porTipousuario.asesoresPrivados.toLocaleString() || '0',
+        icon: Shield,
+        color: '#3b82f6',
+        bgColor: '#dbeafe',
+        badge: 'Asesores',
+        link: '/dashboard/usuarios?tipoUsuario=ASESOR_PRIVADO'
     },
     {
         title: 'USUARIOS VERIFICADOS',
-        value: (metrics?.users.verified || 0).toString(),
-        icon: Shield,
-        color: 'var(--admin-card-3-text)',
-        bgColor: 'var(--admin-card-3-bg)',
-        badge: 'Verificados'
+        value: (metrics?.users.verified || 0).toLocaleString(),
+        icon: ShieldCheck,
+        color: '#059669',
+        bgColor: '#ecfdf5',
+        badge: 'Verificados',
+        link: '/dashboard/usuarios?estadoCuenta=ACTIVO'
     },
     {
-        title: 'SUSPENSIONES RECIENTES',
-        value: (metrics?.analytics.suspensionesRecientes || 0).toString(),
+        title: 'PENDIENTES VERIFICAR',
+        value: (metrics?.analytics.usuariosNoVerificados || 0).toLocaleString(),
+        icon: ClipboardList,
+        color: '#b45309',
+        bgColor: '#fef3c7',
+        badge: `${metrics?.analytics.crecimientoHoy || 0} Hoy`,
+        link: '/dashboard/usuarios?estadoCuenta=POR_ACTIVAR'
+    },
+    {
+        title: 'SUSPENSIONES',
+        value: (metrics?.analytics.suspensionesRecientes || 0).toLocaleString(),
         icon: Ban,
-        color: 'var(--admin-card-4-text)',
-        bgColor: 'var(--admin-card-4-bg)',
-        badge: 'Recientes'
-    },
-    {
-        title: 'VENCIMIENTOS PRÓXIMOS',
-        value: metrics?.alertas.cantidadVencimientos.toString() || '0',
-        icon: Clock,
-        color: 'var(--admin-card-5-text)',
-        bgColor: 'var(--admin-card-5-bg)',
-        badge: 'Próx. 48h'
+        color: '#be123c',
+        bgColor: '#ffe4e6',
+        badge: 'Recientes',
+        link: '/dashboard/usuarios?estadoCuenta=SUSPENDIDO'
     },
   ];
 
@@ -167,40 +181,47 @@ export default function DashboardPage() {
       </div>
 
       <div className="space-y-6 mt-4">
-        {/* Tarjetas Superiores (5 Originales) */}
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {/* KPI Cards Row */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6 mt-2">
           {statCards.map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                  <Card key={idx} className="border-none shadow-sm transition-all hover:shadow-md pt-6 rounded-xl">
-                      <CardContent className="flex flex-col gap-4">
-                          <div className="flex items-center justify-between">
-                              <div 
-                                  className="flex h-10 w-10 items-center justify-center rounded-lg"
-                                  style={{ backgroundColor: stat.bgColor, color: stat.color }}
+            const Icon = stat.icon;
+            return (
+              <Link key={idx} href={stat.link} className="block h-full">
+                  <Card className="border-none shadow-sm transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer rounded-2xl h-full flex flex-col">
+                  <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
+                      <div className="flex items-start justify-between w-full gap-1.5">
+                          <div 
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm"
+                              style={{ backgroundColor: stat.bgColor, color: stat.color }}
+                          >
+                              <Icon className="h-4.5 w-4.5" />
+                          </div>
+                          {stat.badge && (
+                              <span 
+                                  className="px-1.5 py-0.5 text-[8px] font-black rounded-md uppercase tracking-tighter h-fit border truncate max-w-[65px]"
+                                  style={{ 
+                                      backgroundColor: `${stat.bgColor}80`, 
+                                      color: stat.color,
+                                      borderColor: `${stat.color}40`
+                                  }}
+                                  title={stat.badge}
                               >
-                                  <Icon className="h-5 w-5" />
-                              </div>
-                              {stat.badge && (
-                                  <span 
-                                      className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-sm"
-                                      style={{ backgroundColor: stat.bgColor, color: stat.color }}
-                                  >
-                                      {stat.badge}
-                                  </span>
-                              )}
-                          </div>
-                          <div className="flex flex-col gap-1 mt-2">
-                              <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase opacity-80">
-                                  {stat.title}
+                                  {stat.badge}
                               </span>
-                              <span className="text-3xl font-black" style={{ color: 'var(--admin-text-title)' }}>
-                                  {stat.value}
-                              </span>
-                          </div>
-                      </CardContent>
+                          )}
+                      </div>
+                      <div className="flex flex-col mt-auto">
+                          <span className="text-2xl font-black tracking-tight" style={{ color: 'var(--admin-text-title)' }}>
+                              {stat.value}
+                          </span>
+                          <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase mt-1 leading-tight">
+                              {stat.title}
+                          </span>
+                      </div>
+                  </CardContent>
                   </Card>
-              );
+              </Link>
+            );
           })}
         </div>
 

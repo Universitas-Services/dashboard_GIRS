@@ -3,7 +3,7 @@
 import { 
   Search, HelpCircle, 
   Shield, Building2, 
-  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, Eye
+  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Monitor, Ban, Eye, ShieldCheck
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,9 +15,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { sdk } from '@/lib/universitas';
 import { adminService, GetUsersParams } from '@/services/adminService';
+import { dashboardService, DashboardMetrics } from '@/services/dashboardService';
 import { User as UserType, PaginationMeta } from '@/types/user';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -40,6 +41,10 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Dashboard Summary Data
+  const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
   
   // SDK Data
   const [estados, setEstados] = useState<Estado[]>([]);
@@ -61,6 +66,15 @@ export default function UsuariosPage() {
   const [tempSearch, setTempSearch] = useState('');
 
   // --- FETCHING ---
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      const data = await dashboardService.getMetrics();
+      setDashboardData(data);
+    } catch (error) {
+      console.error('Error fetching summary:', error);
+    }
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -100,11 +114,28 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     fetchEstados();
-  }, [fetchEstados]);
+    fetchSummary();
+  }, [fetchEstados, fetchSummary]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Manejar filtros iniciales desde URL
+  useEffect(() => {
+    const tipo = searchParams.get('tipoUsuario');
+    const estadoC = searchParams.get('estadoCuenta');
+    const search = searchParams.get('search');
+    
+    if (tipo || estadoC || search) {
+      setFilters(prev => ({
+        ...prev,
+        tipoUsuario: tipo || prev.tipoUsuario,
+        estadoCuenta: estadoC || prev.estadoCuenta,
+        search: search || prev.search
+      }));
+    }
+  }, [searchParams]);
 
   // --- HANDLERS ---
 
@@ -185,37 +216,69 @@ export default function UsuariosPage() {
   const statCards = [
     {
         title: 'USUARIOS TOTALES',
-        value: meta?.totalItems.toString() || '...',
+        value: dashboardData?.users.total.toLocaleString() || meta?.totalItems.toString() || '...',
         icon: User,
         color: 'var(--admin-card-1-text)',
         bgColor: 'var(--admin-card-1-bg)',
-        badge: ''
+        badge: '',
+        filter: { type: 'reset' }
     },
     {
-        title: 'POR ACTIVAR PAGO',
-        value: '42',
+        title: 'SERVIDORES PÚBLICOS',
+        value: dashboardData?.analytics.porTipousuario.servidoresPublicos.toLocaleString() || '...',
+        icon: Building2,
+        color: '#10b981',
+        bgColor: '#dcfce7',
+        badge: 'Públicos',
+        filter: { type: 'tipo', value: 'SERVIDOR_PUBLICO' }
+    },
+    {
+        title: 'ASESORES PRIVADOS',
+        value: dashboardData?.analytics.porTipousuario.asesoresPrivados.toLocaleString() || '...',
+        icon: Shield,
+        color: '#3b82f6',
+        bgColor: '#dbeafe',
+        badge: 'Asesores',
+        filter: { type: 'tipo', value: 'ASESOR_PRIVADO' }
+    },
+    {
+        title: 'USUARIOS VERIFICADOS',
+        value: dashboardData?.users.verified.toLocaleString() || '...',
+        icon: ShieldCheck,
+        color: '#059669',
+        bgColor: '#ecfdf5',
+        badge: 'Verificados',
+        filter: { type: 'estadoCuenta', value: 'ACTIVO' } // O el que corresponda a verificado
+    },
+    {
+        title: 'PENDIENTES VERIFICAR',
+        value: dashboardData?.analytics.usuariosNoVerificados.toLocaleString() || '...',
         icon: ClipboardList,
-        color: 'var(--admin-card-2-text)',
-        bgColor: 'var(--admin-card-2-bg)',
-        badge: '42 Hoy'
+        color: '#b45309',
+        bgColor: '#fef3c7',
+        badge: 'Pendientes',
+        filter: { type: 'estadoCuenta', value: 'POR_ACTIVAR' }
     },
     {
-        title: 'CUENTAS SUSCRITAS',
-        value: '912',
-        icon: Monitor,
-        color: 'var(--admin-card-3-text)',
-        bgColor: 'var(--admin-card-3-bg)',
-        badge: '71%'
-    },
-    {
-        title: 'SUSPENSIONES RECIENTES',
-        value: '8',
+        title: 'SUSPENSIONES',
+        value: dashboardData?.analytics.suspensionesRecientes.toLocaleString() || '...',
         icon: Ban,
-        color: 'var(--admin-card-4-text)',
-        bgColor: 'var(--admin-card-4-bg)',
-        badge: '-2%'
+        color: '#be123c',
+        bgColor: '#ffe4e6',
+        badge: 'Recientes',
+        filter: { type: 'estadoCuenta', value: 'SUSPENDIDO' }
     },
   ];
+
+  const handleCardClick = (filter: any) => {
+    if (filter.type === 'reset') {
+        clearFilters();
+    } else if (filter.type === 'tipo') {
+        handleTipoUsuarioChange(filter.value);
+    } else if (filter.type === 'estadoCuenta') {
+        handleStatusChange(filter.value);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 w-full pt-2">
@@ -544,33 +607,46 @@ export default function UsuariosPage() {
         </div>
 
         {/* Tarjetas Inferiores */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 pb-12">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-6 pb-12">
           {statCards.map((stat, idx) => {
               const Icon = stat.icon;
+              const isActive = (stat.filter.type === 'tipo' && filters.tipoUsuario === stat.filter.value) || 
+                               (stat.filter.type === 'estadoCuenta' && filters.estadoCuenta === stat.filter.value) ||
+                               (stat.filter.type === 'reset' && !filters.tipoUsuario && !filters.estadoCuenta);
+
               return (
-                  <Card key={idx} className="border-none shadow-sm transition-all hover:shadow-md pt-6 rounded-2xl">
-                      <CardContent className="flex flex-col gap-4">
-                          <div className="flex items-center justify-between">
+                  <Card 
+                    key={idx} 
+                    className={`border-2 transition-all hover:shadow-md rounded-2xl cursor-pointer flex flex-col h-full ${isActive ? 'shadow-md scale-[1.02]' : 'border-transparent shadow-sm'}`}
+                    style={isActive ? { borderColor: stat.color, backgroundColor: 'white' } : {}}
+                    onClick={() => handleCardClick(stat.filter)}
+                  >
+                      <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
+                          <div className="flex items-start justify-between w-full gap-1.5">
                               <div 
-                                  className="flex h-12 w-12 items-center justify-center rounded-xl"
+                                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-sm"
                                   style={{ backgroundColor: stat.bgColor, color: stat.color }}
                               >
-                                  <Icon className="h-6 w-6" />
+                                  <Icon className="h-4.5 w-4.5" />
                               </div>
                               {stat.badge && (
                                   <span 
-                                      className="px-3 py-1 text-xs font-bold rounded-full"
-                                      style={{ backgroundColor: stat.bgColor, color: stat.color }}
+                                      className="px-1.5 py-0.5 text-[8px] font-black rounded-md uppercase tracking-tighter h-fit border truncate max-w-[65px]"
+                                      style={{ 
+                                          backgroundColor: `${stat.bgColor}80`, 
+                                          color: stat.color,
+                                          borderColor: `${stat.color}40`
+                                      }}
                                   >
                                       {stat.badge}
                                   </span>
                               )}
                           </div>
-                          <div className="flex flex-col mt-2">
-                              <span className="text-4xl font-extrabold" style={{ color: 'var(--admin-text-title)' }}>
+                          <div className="flex flex-col mt-auto">
+                              <span className="text-2xl font-black tracking-tight" style={{ color: 'var(--admin-text-title)' }}>
                                   {stat.value}
                               </span>
-                              <span className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase mt-1">
+                              <span className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase mt-1">
                                   {stat.title}
                               </span>
                           </div>
