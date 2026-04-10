@@ -19,7 +19,7 @@ export interface DashboardMetrics {
             email: string;
             nombre: string;
             apellido: string;
-            role: string;
+            tipoUsuario: string;
             createdAt: string;
         }[];
         cantidadVencimientos: number;
@@ -29,7 +29,7 @@ export interface DashboardMetrics {
         email: string;
         nombre: string;
         apellido: string;
-        role: string;
+        tipoUsuario: string;
         createdAt: string;
     }[];
 }
