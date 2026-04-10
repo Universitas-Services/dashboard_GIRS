@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { dashboardService, DashboardMetrics } from '@/services/dashboardService';
 
 export function NotificationBell() {
@@ -65,8 +66,12 @@ export function NotificationBell() {
                         </div>
                     ) : (
                         metrics.alertas.proximosAVencer.map((user) => (
-                            <DropdownMenuItem key={user.id} className="p-4 cursor-pointer hover:bg-slate-50 focus:bg-slate-50 border-b border-slate-50 last:border-none">
-                                <div className="flex items-center gap-3 w-full">
+                            <DropdownMenuItem 
+                                key={user.id} 
+                                className="p-0 cursor-pointer hover:bg-slate-50 focus:bg-slate-50 border-b border-slate-50 last:border-none"
+                                asChild
+                            >
+                                <Link href={`/dashboard/usuarios/${user.id}`} className="p-4 flex items-center gap-3 w-full">
                                     <Avatar className="h-10 w-10 border border-slate-200/60 shadow-sm bg-slate-100">
                                         <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.email}`} className="object-cover" />
                                         <AvatarFallback className="font-bold text-slate-800 text-xs text-center flex items-center justify-center w-full">
@@ -82,7 +87,7 @@ export function NotificationBell() {
                                             <Clock className="h-3 w-3" /> Vence pronto
                                         </p>
                                     </div>
-                                </div>
+                                </Link>
                             </DropdownMenuItem>
                         ))
                     )}

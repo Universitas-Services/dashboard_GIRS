@@ -13,7 +13,9 @@ import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { sdk } from '@/lib/universitas';
 import { adminService, GetUsersParams } from '@/services/adminService';
 import { User as UserType, PaginationMeta } from '@/types/user';
@@ -36,6 +38,8 @@ export default function UsuariosPage() {
   const [users, setUsers] = useState<UserType[]>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const router = useRouter();
   
   // SDK Data
   const [estados, setEstados] = useState<Estado[]>([]);
@@ -51,6 +55,7 @@ export default function UsuariosPage() {
     estado: undefined,
     municipio: undefined,
     tipoUsuario: undefined,
+    estadoCuenta: undefined,
   });
 
   const [tempSearch, setTempSearch] = useState('');
@@ -123,11 +128,39 @@ export default function UsuariosPage() {
   };
 
   const handleStatusChange = (status: string) => {
-    let isActiveValue: string | undefined = undefined;
-    if (status === 'activo') isActiveValue = 'true';
-    if (status === 'inactivo') isActiveValue = 'false';
-    
-    setFilters(prev => ({ ...prev, isActive: isActiveValue, page: 1 }));
+    setFilters(prev => ({ 
+      ...prev, 
+      estadoCuenta: status === 'todos' ? undefined : status, 
+      page: 1 
+    }));
+  };
+
+  const statusConfig: Record<string, { label: string, color: string, bgColor: string }> = {
+    'POR_ACTIVAR': { label: 'Por Activar', color: '#b45309', bgColor: '#fef3c7' },
+    'PRUEBA_GRATUITA': { label: 'Prueba Gratis', color: '#1d4ed8', bgColor: '#dbeafe' },
+    'ACTIVO': { label: 'Activo', color: '#15803d', bgColor: '#dcfce7' },
+    'SUSPENDIDO': { label: 'Suspendido', color: '#be123c', bgColor: '#ffe4e6' },
+    'POR_PAGAR': { label: 'Por Pagar', color: '#ea580c', bgColor: '#ffedd5' },
+    'POR_RENOVAR': { label: 'Por Renovar', color: '#701a75', bgColor: '#fdf4ff' },
+    'SUSCRITO': { label: 'Suscrito', color: '#3730a3', bgColor: '#e0e7ff' }
+  };
+
+  const handleLimitChange = (value: string) => {
+    setFilters(prev => ({ ...prev, limit: parseInt(value), page: 1 }));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedUserIds(users.map(u => u.id));
+    } else {
+      setSelectedUserIds([]);
+    }
+  };
+
+  const toggleSelectUser = (userId: string) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
   };
 
   const applySearch = () => {
@@ -143,6 +176,7 @@ export default function UsuariosPage() {
       estado: undefined,
       municipio: undefined,
       tipoUsuario: undefined,
+      estadoCuenta: undefined,
     });
     setTempSearch('');
     setMunicipios([]);
@@ -304,28 +338,23 @@ export default function UsuariosPage() {
                     <div className="flex flex-wrap gap-2">
                         <Badge 
                             variant="secondary" 
-                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${!filters.isActive ? 'shadow-sm active-badge' : 'bg-white text-muted-foreground hover:bg-white'}`}
-                            style={!filters.isActive ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${!filters.estadoCuenta ? 'shadow-sm active-badge' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                            style={!filters.estadoCuenta ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
                             onClick={() => handleStatusChange('todos')}
                         >
                             Todos
                         </Badge>
-                        <Badge 
-                            variant="secondary" 
-                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.isActive === 'true' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
-                            style={filters.isActive === 'true' ? { backgroundColor: 'var(--admin-badge-activo-bg)', color: 'var(--admin-badge-activo-text)' } : {}}
-                            onClick={() => handleStatusChange('activo')}
-                        >
-                            Activos
-                        </Badge>
-                        <Badge 
-                            variant="secondary" 
-                            className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.isActive === 'false' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
-                            style={filters.isActive === 'false' ? { backgroundColor: 'var(--admin-badge-suspendido-bg)', color: 'var(--admin-badge-suspendido-text)' } : {}}
-                            onClick={() => handleStatusChange('inactivo')}
-                        >
-                            Inactivos
-                        </Badge>
+                        {Object.entries(statusConfig).map(([key, config]) => (
+                            <Badge 
+                                key={key}
+                                variant="secondary" 
+                                className={`px-4 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.estadoCuenta === key ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                                style={filters.estadoCuenta === key ? { backgroundColor: config.bgColor, color: config.color, border: `1px solid ${config.color}20` } : {}}
+                                onClick={() => handleStatusChange(key)}
+                            >
+                                {config.label}
+                            </Badge>
+                        ))}
                     </div>
                 </div>
                 
@@ -352,12 +381,17 @@ export default function UsuariosPage() {
                 <Table>
                     <TableHeader>
                         <TableRow className="border-b border-gray-200/60 hover:bg-transparent">
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[300px] pl-6">Usuario / ID</TableHead>
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[220px]">Rol de Perfil</TableHead>
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[220px]">Ubicación</TableHead>
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[150px]">Registro</TableHead>
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[150px]">Estatus</TableHead>
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 text-center pr-6">Perfil</TableHead>
+                            <TableHead className="w-[50px] pl-6 h-12">
+                                <Checkbox 
+                                    checked={users.length > 0 && selectedUserIds.length === users.length}
+                                    onCheckedChange={(checked) => toggleSelectAll(!!checked)}
+                                />
+                            </TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[250px]">Usuario / ID</TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[200px]">Rol de Perfil</TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[180px]">Ubicación</TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[130px]">Registro</TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[130px] pr-6">Estatus</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -379,8 +413,18 @@ export default function UsuariosPage() {
                         ) : (
                             users.map((user) => {
                                 return (
-                                    <TableRow key={user.id} className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors">
-                                        <TableCell className="py-5 pl-6">
+                                    <TableRow 
+                                        key={user.id} 
+                                        className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors cursor-pointer"
+                                        onClick={() => router.push(`/dashboard/usuarios/${user.id}`)}
+                                    >
+                                        <TableCell className="py-5 pl-6" onClick={(e) => e.stopPropagation()}>
+                                            <Checkbox 
+                                                checked={selectedUserIds.includes(user.id)}
+                                                onCheckedChange={() => toggleSelectUser(user.id)}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="py-5">
                                             <div className="flex items-center gap-4">
                                                 <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
                                                     <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} className="object-cover" />
@@ -407,21 +451,21 @@ export default function UsuariosPage() {
                                         <TableCell className="py-5 text-slate-800 font-bold text-sm tracking-tight">
                                             {format(new Date(user.createdAt), 'dd MMM yyyy', { locale: es })}
                                         </TableCell>
-                                        <TableCell className="py-5">
-                                            <Badge 
-                                                className="px-3 py-1 text-[11px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default"
-                                                style={{ 
-                                                    backgroundColor: user.isActive ? 'var(--admin-badge-activo-bg)' : 'var(--admin-badge-suspendido-bg)', 
-                                                    color: user.isActive ? 'var(--admin-badge-activo-text)' : 'var(--admin-badge-suspendido-text)' 
-                                                }}
-                                            >
-                                                {user.isActive ? 'Activo' : 'Inactivo'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="py-5 pr-6 text-center">
-                                            <a href={`/dashboard/usuarios/${user.id}`} className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-md transition-colors inline-flex">
-                                                <Eye className="h-5 w-5" />
-                                            </a>
+                                        <TableCell className="py-5 pr-6">
+                                            {(() => {
+                                                const config = statusConfig[user.estadoCuenta] || { label: user.estadoCuenta || 'Sin Estado', color: '#64748b', bgColor: '#f1f5f9' };
+                                                return (
+                                                    <Badge 
+                                                        className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default border-none"
+                                                        style={{ 
+                                                            backgroundColor: config.bgColor, 
+                                                            color: config.color,
+                                                        }}
+                                                    >
+                                                        {config.label.toUpperCase()}
+                                                    </Badge>
+                                                );
+                                            })()}
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -433,9 +477,33 @@ export default function UsuariosPage() {
             
             {/* Paginación */}
             <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-5 border-t border-gray-200/60 bg-[var(--admin-filter-bg)]">
-                <span className="text-xs font-semibold text-muted-foreground mb-4 sm:mb-0">
-                    Mostrando <span className="text-slate-900">{meta ? ((meta.currentPage - 1) * meta.itemsPerPage) + 1 : 0}-{meta ? Math.min(meta.currentPage * meta.itemsPerPage, meta.totalItems) : 0}</span> de <span className="text-slate-900">{meta?.totalItems || 0}</span> usuarios registrados
-                </span>
+                <div className="flex items-center gap-4 mb-4 sm:mb-0">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                        Mostrar
+                    </span>
+                    <Select
+                        value={filters.limit?.toString() || "10"}
+                        onValueChange={handleLimitChange}
+                    >
+                        <SelectTrigger className="w-[70px] bg-white border-gray-200 h-8 text-xs font-bold">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="20">20</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <span className="text-xs font-semibold text-muted-foreground">
+                        filas
+                    </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                        Mostrando <span className="text-slate-900">{meta ? ((meta.currentPage - 1) * meta.itemsPerPage) + 1 : 0}-{meta ? Math.min(meta.currentPage * meta.itemsPerPage, meta.totalItems) : 0}</span> de <span className="text-slate-900">{meta?.totalItems || 0}</span> usuarios registrados
+                    </span>
                 <div className="flex items-center gap-1.5">
                     <Button 
                         variant="outline" size="icon" className="h-8 w-8 rounded-md bg-white border-gray-200 hover:bg-gray-50 shadow-sm text-muted-foreground"
@@ -472,6 +540,7 @@ export default function UsuariosPage() {
                     </Button>
                 </div>
             </div>
+        </div>
         </div>
 
         {/* Tarjetas Inferiores */}
