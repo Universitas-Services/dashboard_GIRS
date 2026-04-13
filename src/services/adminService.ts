@@ -1,5 +1,5 @@
 import api from '@/lib/axios';
-import { User } from '@/types/user';
+import { User, CRMNotesResponse, CRMNote } from '@/types/user';
 
 // 1. Definimos los tipos para los parámetros y la respuesta paginada de Usuarios
 export interface GetUsersParams {
@@ -88,4 +88,45 @@ export const adminService = {
     return response.data;
   },
 
+  convertToPrivateTrial: async (id: string) => {
+    const response = await api.patch(`/admin/users/${id}/convert-to-private-trial`);
+    return response.data;
+  },
+
+  convertToPublic: async (id: string) => {
+    const response = await api.patch(`/admin/users/${id}/convert-to-public`);
+    return response.data;
+  },
+
+  // --- CRM NOTES ---
+  getCrmNotes: async (userId: string): Promise<CRMNotesResponse> => {
+    const response = await api.get<CRMNotesResponse>(`/admin/users/${userId}/crm-notes`);
+    return response.data;
+  },
+
+  createCrmNote: async (userId: string, data: { content: string; etiqueta: string | null }): Promise<CRMNote> => {
+    const response = await api.post<CRMNote>(`/admin/users/${userId}/crm-notes`, data);
+    return response.data;
+  },
+
+  updateCrmNote: async (noteId: string, data: { content?: string; etiqueta?: string | null }): Promise<CRMNote> => {
+    const response = await api.patch<CRMNote>(`/admin/crm-notes/${noteId}`, data);
+    return response.data;
+  },
+
+  deleteCrmNote: async (noteId: string): Promise<void> => {
+    const response = await api.delete(`/admin/crm-notes/${noteId}`);
+    return response.data;
+  },
+
+  // --- TERRITORIO ---
+  getEstados: async () => {
+    const response = await api.get('/territorio/estados');
+    return response.data;
+  },
+
+  getMunicipios: async (estadoId: number) => {
+    const response = await api.get(`/territorio/municipios/${estadoId}`);
+    return response.data;
+  },
 };

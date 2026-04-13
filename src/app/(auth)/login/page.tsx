@@ -8,12 +8,13 @@ export default function LoginPage() {
       <div className="mb-8 flex justify-center">
         {/* 2. Implementación del Logo SVG */}
         <Image
-          src="/logo-azul.svg" // Busca automáticamente en la carpeta /public
+          src="/logo-azul.svg"
           alt="Logo Universitas"
-          width={250} // Referencia del ancho original del archivo
-          height={80} // Referencia de altura para el cálculo de aspecto
-          className="h-20 w-auto" // Tailwind: Altura fija (80px), ancho automático
-          priority // Carga prioritaria (mejora la métrica LCP)
+          width={250}
+          height={80}
+          className="h-20 w-auto" // Aumentado a h-20 (80px)
+          style={{ width: 'auto' }}
+          priority
         />
       </div>
 
