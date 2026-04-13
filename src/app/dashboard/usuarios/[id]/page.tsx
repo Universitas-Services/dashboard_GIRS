@@ -3,7 +3,7 @@
 import { 
   ArrowLeft, Shield, Mail, Building, 
   CheckCircle2, Send, Clock, ShieldCheck, Hourglass, Ban,
-  Trash2, Edit2, Check, X, Tag, ChevronLeft, ChevronRight,
+  Trash2, Edit2, Check, X, ChevronLeft, ChevronRight,
   User as UserIcon, Phone, MapPin, Landmark, Briefcase, Fingerprint
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -16,7 +16,7 @@ import { NotificationBell } from '@/components/dashboard/NotificationBell';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback } from 'react';
 import { adminService } from '@/services/adminService';
-import { User, CRMNotesResponse } from '@/types/user';
+import { User, CRMNotesResponse, CRMNote } from '@/types/user';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -122,7 +122,7 @@ export default function UserDetailsPage() {
     }
   };
 
-  const startEditing = (note: any) => {
+  const startEditing = (note: CRMNote) => {
     setEditandoNotaId(note.id);
     setEditMensaje(note.content);
     setEditEtiqueta(note.etiqueta || "");

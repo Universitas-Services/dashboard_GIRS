@@ -17,15 +17,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { UniversitasAPI } from 'sdk-global-universitas';
+
 import { adminService, GetUsersParams } from '@/services/adminService';
 import { DashboardMetrics, dashboardService } from '@/services/dashboardService';
 import { PaginationMeta, User as UserType } from '@/types/user';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// Initialize the SDK directly
-const sdk = new (UniversitasAPI as any)();
+
 
 interface Estado {
   id: number;
@@ -99,8 +98,8 @@ export default function UsuariosPage() {
 
   const fetchEstados = useCallback(async () => {
     try {
-      const response = await sdk.territorio.getEstados();
-      setEstados(response.data);
+      const response = await adminService.getEstados();
+      setEstados(response.data || response);
     } catch (error) {
       console.error('Error fetching estados:', error);
     }
@@ -109,8 +108,8 @@ export default function UsuariosPage() {
   const fetchMunicipios = useCallback(async (estadoId: number) => {
     setLoadingTerritorio(true);
     try {
-      const response = await sdk.territorio.getMunicipios(estadoId);
-      setMunicipios(response.data);
+      const response = await adminService.getMunicipios(estadoId);
+      setMunicipios(response.data || response);
     } catch (error) {
       console.error('Error fetching municipios:', error);
     } finally {

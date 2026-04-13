@@ -118,4 +118,15 @@ export const adminService = {
     const response = await api.delete(`/admin/crm-notes/${noteId}`);
     return response.data;
   },
+
+  // --- TERRITORIO ---
+  getEstados: async () => {
+    const response = await api.get('/territorio/estados');
+    return response.data;
+  },
+
+  getMunicipios: async (estadoId: number) => {
+    const response = await api.get(`/territorio/municipios/${estadoId}`);
+    return response.data;
+  },
 };
