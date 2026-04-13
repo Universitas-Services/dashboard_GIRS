@@ -8,7 +8,7 @@ import {
 } from '@/lib/authStorage';
 
 // URL base desde variables de entorno
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // 1. Instancia PÚBLICA (Sin interceptores)
 // Se usa para Login y Refresh Token en authService.

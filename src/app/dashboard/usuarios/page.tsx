@@ -15,13 +15,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { sdk } from '@/lib/universitas';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { UniversitasAPI } from 'sdk-global-universitas';
 import { adminService, GetUsersParams } from '@/services/adminService';
-import { dashboardService, DashboardMetrics } from '@/services/dashboardService';
-import { User as UserType, PaginationMeta } from '@/types/user';
+import { DashboardMetrics, dashboardService } from '@/services/dashboardService';
+import { PaginationMeta, User as UserType } from '@/types/user';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+// Initialize the SDK directly
+const sdk = new (UniversitasAPI as any)();
 
 interface Estado {
   id: number;
@@ -42,6 +46,8 @@ export default function UsuariosPage() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Dashboard Summary Data
   const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
@@ -76,18 +82,20 @@ export default function UsuariosPage() {
     }
   }, []);
 
-  const fetchUsers = useCallback(async () => {
+  const fetchUsers = useCallback(async (currentFilters: GetUsersParams, signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const response = await adminService.getAllUsers(filters);
+      const response = await adminService.getAllUsers(currentFilters);
+      if (signal?.aborted) return;
       setUsers(response.data);
       setMeta(response.meta);
     } catch (error) {
+      if (signal?.aborted) return;
       console.error('Error fetching users:', error);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
-  }, [filters]);
+  }, []);
 
   const fetchEstados = useCallback(async () => {
     try {
@@ -118,24 +126,54 @@ export default function UsuariosPage() {
   }, [fetchEstados, fetchSummary]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    const abortController = new AbortController();
+    fetchUsers(filters, abortController.signal);
+    return () => abortController.abort();
+  }, [filters, fetchUsers]);
 
-  // Manejar filtros iniciales desde URL
+  // Manejar filtros iniciales y sincronizar con URL
   useEffect(() => {
-    const tipo = searchParams.get('tipoUsuario');
-    const estadoC = searchParams.get('estadoCuenta');
-    const search = searchParams.get('search');
-    
-    if (tipo || estadoC || search) {
+    if (isInitialLoad) {
+      const page = searchParams.get('page');
+      const limit = searchParams.get('limit');
+      const tipo = searchParams.get('tipoUsuario');
+      const estadoC = searchParams.get('estadoCuenta');
+      const search = searchParams.get('search');
+      const estado = searchParams.get('estado');
+      const municipio = searchParams.get('municipio');
+      
       setFilters(prev => ({
         ...prev,
+        page: page ? parseInt(page) : prev.page,
+        limit: limit ? parseInt(limit) : prev.limit,
         tipoUsuario: tipo || prev.tipoUsuario,
         estadoCuenta: estadoC || prev.estadoCuenta,
-        search: search || prev.search
+        search: search || prev.search,
+        estado: estado || prev.estado,
+        municipio: municipio || prev.municipio,
       }));
+      
+      if (search) setTempSearch(search);
+      setIsInitialLoad(false);
+    } else {
+      const params = new URLSearchParams(searchParams.toString());
+      
+      if (filters.page && filters.page > 1) { params.set('page', filters.page.toString()); } else { params.delete('page'); }
+      if (filters.limit && filters.limit !== 10) { params.set('limit', filters.limit.toString()); } else { params.delete('limit'); }
+      if (filters.search) { params.set('search', filters.search); } else { params.delete('search'); }
+      if (filters.tipoUsuario) { params.set('tipoUsuario', filters.tipoUsuario); } else { params.delete('tipoUsuario'); }
+      if (filters.estadoCuenta) { params.set('estadoCuenta', filters.estadoCuenta); } else { params.delete('estadoCuenta'); }
+      if (filters.estado) { params.set('estado', filters.estado); } else { params.delete('estado'); }
+      if (filters.municipio) { params.set('municipio', filters.municipio); } else { params.delete('municipio'); }
+
+      const newQueryString = params.toString();
+      const currentQueryString = searchParams.toString();
+      
+      if (newQueryString !== currentQueryString) {
+        router.replace(`${pathname}?${newQueryString}`, { scroll: false });
+      }
     }
-  }, [searchParams]);
+  }, [filters, searchParams, pathname, router, isInitialLoad]);
 
   // --- HANDLERS ---
 
@@ -478,7 +516,7 @@ export default function UsuariosPage() {
                                 return (
                                     <TableRow 
                                         key={user.id} 
-                                        className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors cursor-pointer"
+                                        className="border-b border-gray-200/60 last:border-none hover:bg-white/50 transition-colors group cursor-pointer"
                                         onClick={() => router.push(`/dashboard/usuarios/${user.id}`)}
                                     >
                                         <TableCell className="py-5 pl-6" onClick={(e) => e.stopPropagation()}>
@@ -488,16 +526,16 @@ export default function UsuariosPage() {
                                             />
                                         </TableCell>
                                         <TableCell className="py-5">
-                                            <div className="flex items-center gap-4">
+                                            <Link href={`/dashboard/usuarios/${user.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity w-fit" onClick={(e) => e.stopPropagation()}>
                                                 <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
                                                     <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} className="object-cover" />
                                                     <AvatarFallback className="font-bold text-slate-800 text-xs">{user.nombre[0]}{user.apellido ? user.apellido[0] : ''}</AvatarFallback>
                                                 </Avatar>
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-900 text-sm">{user.nombre} {user.apellido}</span>
+                                                    <span className="font-bold text-slate-900 text-sm hover:underline">{user.nombre} {user.apellido}</span>
                                                     <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">{user.email}</span>
                                                 </div>
-                                            </div>
+                                            </Link>
                                         </TableCell>
                                         <TableCell className="py-5">
                                             <div className="flex items-center gap-2.5 text-slate-600 font-semibold text-sm">
@@ -519,7 +557,7 @@ export default function UsuariosPage() {
                                                 const config = statusConfig[user.estadoCuenta] || { label: user.estadoCuenta || 'Sin Estado', color: '#64748b', bgColor: '#f1f5f9' };
                                                 return (
                                                     <Badge 
-                                                        className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none hover:opacity-90 cursor-default border-none"
+                                                        className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none cursor-default border-none"
                                                         style={{ 
                                                             backgroundColor: config.bgColor, 
                                                             color: config.color,

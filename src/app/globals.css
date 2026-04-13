@@ -86,6 +86,22 @@
   --admin-log-gold-bg: #fffbeb;
   --admin-log-gold-text: #b45309;
 
+  /* CRM Notes Label Colors */
+  --crm-label-por-contactar-bg: #fef9c3; /* yellow-100 */
+  --crm-label-por-contactar-text: #a16207; /* yellow-700 */
+  --crm-label-contactado-bg: #dbeafe; /* blue-100 */
+  --crm-label-contactado-text: #1d4ed8; /* blue-700 */
+  --crm-label-pago-realizado-bg: #dcfce7; /* green-100 */
+  --crm-label-pago-realizado-text: #15803d; /* green-700 */
+  --crm-label-por-enviar-doc-bg: #ffedd5; /* orange-100 */
+  --crm-label-por-enviar-doc-text: #c2410c; /* orange-700 */
+  --crm-label-envio-doc-bg: #d1fae5; /* emerald-100 */
+  --crm-label-envio-doc-text: #047857; /* emerald-700 */
+  --crm-label-no-tiene-doc-bg: #fee2e2; /* red-100 */
+  --crm-label-no-tiene-doc-text: #b91c1c; /* red-700 */
+  --crm-label-no-envio-doc-planificar-bg: #fecdd3; /* rose-200 (más fuerte que red-100) */
+  --crm-label-no-envio-doc-planificar-text: #4c0519; /* rose-950 (vino muy oscuro) */
+
   --background: #d9e8e3;
   --foreground: #3b4044;
   --card: #ffffff;

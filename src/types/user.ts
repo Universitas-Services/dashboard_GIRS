@@ -28,6 +28,8 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   estadoCuenta: string;
+  diasRestantes?: number;
+  isExpired?: boolean;
   // 2. Agregamos la propiedad profile opcional
   profile?: UserProfile;
 }
@@ -55,4 +57,27 @@ export interface GetUsersParams {
   limit?: number;
   role?: UserRole;
   search?: string;
+}
+
+export interface CRMNote {
+  id: string;
+  userId: string;
+  content: string;
+  etiqueta: string | null;
+  adminId: string;
+  adminNombre: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CRMNotesResponse {
+  usuario: {
+    id: string;
+    nombre: string;
+    apellido: string | null;
+    email: string;
+    tipoUsuario: string;
+  };
+  totalNotas: number;
+  notes: CRMNote[];
 }
