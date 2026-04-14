@@ -4,7 +4,7 @@ import {
   ArrowLeft, Shield, Mail, Building, 
   CheckCircle2, Send, Clock, ShieldCheck, Hourglass, Ban,
   Trash2, Edit2, Check, X, ChevronLeft, ChevronRight,
-  User as UserIcon, Phone, MapPin, Landmark, Briefcase, Fingerprint
+  User as UserIcon, Phone, MapPin, Landmark, Briefcase, Fingerprint, Plus, Minus
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -41,8 +41,9 @@ export default function UserDetailsPage() {
 
   // --- CRM NOTES STATE ---
   const [crmData, setCrmData] = useState<CRMNotesResponse | null>(null);
-  const [isCrmLoading, setIsCrmLoading] = useState(false);
-  const [nuevoMensaje, setNuevoMensaje] = useState("");
+  const [isCrmLoading, setIsCrmLoading] = useState<boolean>(false);
+  const [isFetchingNotes, setIsFetchingNotes] = useState<boolean>(true);
+  const [nuevoMensaje, setNuevoMensaje] = useState<string>("");
   const [nuevaEtiqueta, setNuevaEtiqueta] = useState<string>("");
   
   const [editandoNotaId, setEditandoNotaId] = useState<string | null>(null);
@@ -59,6 +60,11 @@ export default function UserDetailsPage() {
   // Popover de Convertir a Privado
   const [popoverConvertirOpen, setPopoverConvertirOpen] = useState(false);
   const [popoverPublicoOpen, setPopoverPublicoOpen] = useState(false);
+  const [popoverActiveOpen, setPopoverActiveOpen] = useState(false);
+  const [pendingActiveState, setPendingActiveState] = useState<boolean | null>(null);
+  const [isUpdatingDays, setIsUpdatingDays] = useState(false);
+  const [popoverAddDaysOpen, setPopoverAddDaysOpen] = useState(false);
+  const [popoverSubtractDaysOpen, setPopoverSubtractDaysOpen] = useState(false);
 
   const fetchUser = useCallback(async () => {
     if (!id) return;
@@ -75,13 +81,22 @@ export default function UserDetailsPage() {
 
   const fetchNotes = useCallback(async () => {
     if (!id) return;
+    setIsFetchingNotes(true);
     try {
-      const data = await adminService.getCrmNotes(id);
+      const data = await adminService.getCrmNotes(id, crmPage, crmLimit);
       setCrmData(data);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error fetching CRM notes:', error);
+      // Fallback a array vacío para evitar "Cargando" infinito por error 404 o Adblockers
+      const fetchError = error as { response?: { status?: number } };
+      setCrmData({ data: [], meta: { totalItems: 0, itemCount: 0, itemsPerPage: crmLimit, totalPages: 1, currentPage: 1 }, usuario: { id: id as string, nombre: '', apellido: null, email: '', tipoUsuario: '' } });
+      if (fetchError?.response?.status !== 404) {
+         toast.error("Error cargando notas. O desactiva tu Adblocker temporalmente si falla.");
+      }
+    } finally {
+      setIsFetchingNotes(false);
     }
-  }, [id]);
+  }, [id, crmPage, crmLimit]);
 
   useEffect(() => {
     fetchUser();
@@ -231,6 +246,55 @@ export default function UserDetailsPage() {
     }
   };
 
+  const handleToggleActive = async () => {
+    if (!id || pendingActiveState === null) return;
+    setIsUpdating(true);
+    setPopoverActiveOpen(false);
+    try {
+      await adminService.toggleUserActive(id as string);
+      toast.success(pendingActiveState ? "Usuario activado exitosamente." : "Usuario desactivado exitosamente.");
+      setUser(prev => prev ? { ...prev, isActive: pendingActiveState } : prev);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al actualizar el estado del usuario.");
+    } finally {
+      setIsUpdating(false);
+      setPendingActiveState(null);
+    }
+  };
+
+  const handleAddDays = async () => {
+    if (!id || isUpdatingDays) return;
+    setIsUpdatingDays(true);
+    setPopoverAddDaysOpen(false);
+    try {
+      const response = await adminService.addSubscriptionDays(id as string);
+      toast.success(response.message || "Suscripción extendida por 30 días.");
+      setUser(prev => prev ? { ...prev, diasRestantes: response.diasRestantes, estadoCuenta: response.user?.estadoCuenta || prev.estadoCuenta } : prev);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al añadir días.");
+    } finally {
+      setIsUpdatingDays(false);
+    }
+  };
+
+  const handleSubtractDays = async () => {
+    if (!id || isUpdatingDays) return;
+    setIsUpdatingDays(true);
+    setPopoverSubtractDaysOpen(false);
+    try {
+      const response = await adminService.subtractSubscriptionDays(id as string);
+      toast.success(response.message || "Suscripción reducida por 30 días.");
+      setUser(prev => prev ? { ...prev, diasRestantes: response.diasRestantes, estadoCuenta: response.user?.estadoCuenta || prev.estadoCuenta } : prev);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al quitar días.");
+    } finally {
+      setIsUpdatingDays(false);
+    }
+  };
+
   if (loading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
@@ -322,21 +386,66 @@ export default function UserDetailsPage() {
                     <span className="text-lg font-bold text-slate-900 tracking-tight leading-tight">Gestión de Acceso</span>
                 </div>
 
-                <div className="flex items-center justify-between bg-emerald-50 hover:bg-emerald-100/60 transition-colors p-4 rounded-2xl border border-emerald-100 relative z-10 w-full">
-                    <div className="flex flex-col gap-1 mr-4">
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
-                            {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'ENVIÓ' : 'REGISTRAR'}
-                        </span>
-                        <span className="text-sm font-black text-emerald-950">
-                            {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Normativa' : 'Pago $20'}
-                        </span>
+                <div className="flex flex-col gap-3 relative z-10 w-full">
+                    {/* Toggle Normativa/Pago */}
+                    <div className="flex items-center justify-between bg-emerald-50 hover:bg-emerald-100/60 transition-colors py-2.5 px-4 rounded-xl border border-emerald-100">
+                        <div className="flex flex-col gap-0.5 mr-4">
+                            <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest leading-none">
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'ENVIÓ' : 'REGISTRAR'}
+                            </span>
+                            <span className="text-xs font-black text-emerald-950 leading-none mt-1">
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'Normativa' : 'Pago $20'}
+                            </span>
+                        </div>
+                        <Switch 
+                            disabled={isUpdating}
+                            checked={user.tipoUsuario === 'SERVIDOR_PUBLICO' ? user.estadoCuenta === 'ACTIVO' : user.estadoCuenta === 'SUSCRITO'}
+                            onCheckedChange={handleStatusToggle}
+                            className="data-[state=checked]:bg-emerald-500 shrink-0 scale-75 origin-right"
+                        />
                     </div>
-                    <Switch 
-                        disabled={isUpdating}
-                        checked={user.tipoUsuario === 'SERVIDOR_PUBLICO' ? user.estadoCuenta === 'ACTIVO' : user.estadoCuenta === 'SUSCRITO'}
-                        onCheckedChange={handleStatusToggle}
-                        className="data-[state=checked]:bg-emerald-500 shrink-0"
-                    />
+
+                    {/* Toggle Activo/Inactivo universal */}
+                    <div className={`flex items-center justify-between ${user.isActive ? 'bg-indigo-50 hover:bg-indigo-100/60 border-indigo-100' : 'bg-slate-50 hover:bg-slate-100/60 border-slate-100'} transition-colors py-2.5 px-4 rounded-xl border`}>
+                        <div className="flex flex-col gap-0.5 mr-4">
+                            <span className={`text-[9px] font-bold uppercase tracking-widest leading-none ${user.isActive ? 'text-indigo-600' : 'text-slate-500'}`}>
+                                ESTADO
+                            </span>
+                            <span className={`text-xs font-black leading-none mt-1 ${user.isActive ? 'text-indigo-950' : 'text-slate-700'}`}>
+                                {user.isActive ? 'Cuenta Activa' : 'Cuenta Inactiva'}
+                            </span>
+                        </div>
+                        <Popover open={popoverActiveOpen} onOpenChange={(open) => { setPopoverActiveOpen(open); if(!open) setPendingActiveState(null); }}>
+                            <PopoverTrigger asChild>
+                                <button disabled={isUpdating} onClick={() => setPendingActiveState(!user.isActive)} className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${user.isActive ? 'bg-indigo-500' : 'bg-slate-200'} scale-75 origin-right`}>
+                                    <span className={`pointer-events-none block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform ${user.isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-72 p-4 rounded-xl shadow-xl border-slate-100" align="end" sideOffset={5}>
+                                <div className="flex flex-col gap-3">
+                                    <div className="flex items-start gap-3">
+                                        <div className={`h-8 w-8 rounded-full ${pendingActiveState ? 'bg-indigo-100' : 'bg-slate-100'} flex items-center justify-center shrink-0`}>
+                                            <ShieldCheck className={`h-4 w-4 ${pendingActiveState ? 'text-indigo-600' : 'text-slate-600'}`} />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <h4 className="font-bold text-slate-900 text-sm">{pendingActiveState ? 'Activar Cuenta' : 'Desactivar Cuenta'}</h4>
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                {pendingActiveState ? 'El usuario recuperará el acceso al sistema inmediatamente.' : 'El usuario perderá el acceso al sistema hasta que se reactive.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-end gap-2 mt-2">
+                                        <Button size="sm" variant="outline" className="h-7 text-xs px-4 shadow-none text-slate-600 font-bold" onClick={() => { setPopoverActiveOpen(false); setPendingActiveState(null); }}>
+                                            Cancelar
+                                        </Button>
+                                        <Button size="sm" className={`h-7 text-xs px-4 shadow-none text-white font-bold ${pendingActiveState ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-slate-800 hover:bg-slate-900'}`} onClick={handleToggleActive}>
+                                            Confirmar
+                                        </Button>
+                                    </div>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
                 </div>
                 
                 {isUpdating && (
@@ -560,16 +669,93 @@ export default function UserDetailsPage() {
                     )}
                 </div>
 
-                <div className="rounded-3xl p-6 flex items-center justify-between overflow-hidden relative shadow-sm border border-purple-100 mt-2 bg-purple-50">
-                    <div className="flex flex-col z-10">
-                        <span className="text-[10px] font-extrabold tracking-wider text-purple-600/80 uppercase">Días de Acceso Restantes</span>
-                        <span className={`text-6xl font-black mt-1 ${user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'text-purple-700' : user.isExpired ? 'text-red-500' : 'text-slate-900'}`}>
-                            {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? '∞' : (user.diasRestantes ?? 0)}
-                        </span>
+                <div className="rounded-3xl p-6 flex flex-col gap-4 overflow-hidden relative shadow-sm border border-purple-100 mt-2 bg-purple-50">
+                    <div className="flex items-start justify-between z-10 w-full">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-extrabold tracking-wider text-purple-600/80 uppercase">Días de Acceso Restantes</span>
+                            <span className={`text-6xl font-black mt-1 ${user.tipoUsuario === 'SERVIDOR_PUBLICO' ? 'text-purple-700' : user.isExpired ? 'text-red-500' : 'text-slate-900'}`}>
+                                {user.tipoUsuario === 'SERVIDOR_PUBLICO' ? '∞' : (user.diasRestantes ?? 0)}
+                            </span>
+                        </div>
+                        <div className="h-16 w-16 shrink-0 bg-white text-purple-600 shadow-sm rounded-2xl flex items-center justify-center border border-purple-100/50">
+                            <Hourglass className="h-8 w-8 text-purple-500" />
+                        </div>
                     </div>
-                    <div className="h-16 w-16 bg-white text-purple-600 shadow-sm rounded-2xl flex items-center justify-center z-10 border border-purple-100/50">
-                        <Hourglass className="h-8 w-8 text-purple-500" />
-                    </div>
+
+                    {user.tipoUsuario === 'ASESOR_PRIVADO' && (
+                        <div className="flex items-center gap-2 mt-2 z-10 w-full">
+                            <Popover open={popoverAddDaysOpen} onOpenChange={setPopoverAddDaysOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        disabled={isUpdatingDays}
+                                        className="flex-1 h-12 bg-white hover:bg-white border-transparent shadow-sm hover:shadow-md transition-all rounded-xl border-b-2 border-b-slate-200"
+                                    >
+                                        <Plus className="h-5 w-5 mr-1 text-purple-600" />
+                                        <span className="tracking-tight text-[11px] font-extrabold text-slate-900">AÑADIR 30 DÍAS</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-4 rounded-xl shadow-xl border-slate-100" align="start" sideOffset={5}>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                                                <Plus className="h-4 w-4 text-purple-600" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <h4 className="font-bold text-slate-900 text-sm">¿Añadir 30 Días?</h4>
+                                                <p className="text-xs text-slate-500 mt-0.5">Se extenderá el acceso por 30 días adicionales de suscripción.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-2 mt-2">
+                                            <Button size="sm" variant="outline" className="h-7 text-xs px-4 shadow-none text-slate-600 font-bold" onClick={() => setPopoverAddDaysOpen(false)}>
+                                                Cancelar
+                                            </Button>
+                                            <Button size="sm" className="h-7 text-xs px-4 shadow-none bg-purple-600 hover:bg-purple-700 text-white font-bold" onClick={handleAddDays}>
+                                                Confirmar
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+
+                            <Popover open={popoverSubtractDaysOpen} onOpenChange={setPopoverSubtractDaysOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm"
+                                        disabled={isUpdatingDays}
+                                        className="flex-1 h-12 bg-white hover:bg-white border-transparent shadow-sm hover:shadow-md transition-all rounded-xl border-b-2 border-b-slate-200"
+                                    >
+                                        <Minus className="h-5 w-5 mr-1 text-purple-600" />
+                                        <span className="tracking-tight text-[11px] font-extrabold text-slate-900">QUITAR 30 DÍAS</span>
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-4 rounded-xl shadow-xl border-slate-100" align="end" sideOffset={5}>
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                                <Minus className="h-4 w-4 text-red-600" />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <h4 className="font-bold text-slate-900 text-sm">¿Quitar 30 Días?</h4>
+                                                <p className="text-xs text-slate-500 mt-0.5">Se restarán 30 días al periodo actual. Si llega a 0, la suscripción se dará por finalizada.</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-end gap-2 mt-2">
+                                            <Button size="sm" variant="outline" className="h-7 text-xs px-4 shadow-none text-slate-600 font-bold" onClick={() => setPopoverSubtractDaysOpen(false)}>
+                                                Cancelar
+                                            </Button>
+                                            <Button size="sm" className="h-7 text-xs px-4 shadow-none bg-red-600 hover:bg-red-700 text-white font-bold" onClick={handleSubtractDays}>
+                                                Confirmar
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                    )}
+                    
                     {/* Decorative abstract shape */}
                     <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-purple-200/40 rounded-full blur-xl pointer-events-none"></div>
                 </div>
@@ -587,7 +773,7 @@ export default function UserDetailsPage() {
                     <div className="flex items-center justify-between">
                         <label className="text-[10px] font-extrabold tracking-wider text-slate-500 uppercase">Notas Internas (CRM)</label>
                         <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
-                           {crmData?.totalNotas || 0} notas
+                           {crmData?.meta?.totalItems || 0} notas
                         </span>
                     </div>
                     
@@ -628,13 +814,13 @@ export default function UserDetailsPage() {
                 </div>
 
                 <div className="flex flex-col gap-6 mt-4">
-                    {!crmData?.notes ? (
+                    {isFetchingNotes ? (
                         <div className="text-center py-8 text-sm text-slate-400">Cargando notas...</div>
-                    ) : crmData.notes.length === 0 ? (
+                    ) : !crmData?.data || crmData.data.length === 0 ? (
                         <div className="text-center py-8 text-sm text-slate-400">No hay notas registradas para este usuario.</div>
                     ) : (
                         <>
-                            {crmData.notes.slice((crmPage - 1) * crmLimit, crmPage * crmLimit).map((note) => {
+                            {crmData.data.map((note) => {
                                 const isEdited = note.updatedAt !== note.createdAt;
                                 const isEditingThis = editandoNotaId === note.id;
                                 const etiqConfig = getEtiqConfig(note.etiqueta);
@@ -749,30 +935,30 @@ export default function UserDetailsPage() {
                             })}
                             
                             {/* Paginación de Notas */}
-                            {crmData.notes.length > crmLimit && (
+                            {crmData.meta && crmData.meta.totalPages > 1 && (
                                 <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-2">
                                     <span className="text-xs text-slate-500 font-medium">
-                                        Mostrando {Math.min((crmPage - 1) * crmLimit + 1, crmData.notes.length)} - {Math.min(crmPage * crmLimit, crmData.notes.length)} de {crmData.notes.length} notas
+                                        Mostrando notas {(crmData.meta.currentPage - 1) * crmData.meta.itemsPerPage + 1} - {Math.min(crmData.meta.currentPage * crmData.meta.itemsPerPage, crmData.meta.totalItems)} de {crmData.meta.totalItems}
                                     </span>
                                     <div className="flex items-center gap-1.5">
                                         <Button
                                             variant="outline"
                                             size="icon"
                                             className="h-8 w-8 rounded-lg shadow-none"
-                                            disabled={crmPage === 1}
+                                            disabled={crmData.meta.currentPage === 1}
                                             onClick={() => setCrmPage(p => Math.max(1, p - 1))}
                                         >
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
                                         <span className="text-xs font-bold text-slate-700 px-2">
-                                            {crmPage} / {Math.ceil(crmData.notes.length / crmLimit)}
+                                            {crmData.meta.currentPage} / {crmData.meta.totalPages}
                                         </span>
                                         <Button
                                             variant="outline"
                                             size="icon"
                                             className="h-8 w-8 rounded-lg shadow-none"
-                                            disabled={crmPage === Math.ceil(crmData.notes.length / crmLimit)}
-                                            onClick={() => setCrmPage(p => Math.min(Math.ceil(crmData.notes.length / crmLimit), p + 1))}
+                                            disabled={crmData.meta.currentPage === crmData.meta.totalPages}
+                                            onClick={() => setCrmPage(p => Math.min(crmData.meta.totalPages, p + 1))}
                                         >
                                             <ChevronRight className="h-4 w-4" />
                                         </Button>

@@ -102,7 +102,6 @@ export default function DashboardPage() {
         color: '#b45309',
         bgColor: '#fef3c7',
         badge: `${metrics?.analytics.crecimientoHoy || 0} Hoy`,
-        link: '/dashboard/usuarios?estadoCuenta=POR_ACTIVAR'
     },
     {
         title: 'SUSPENSIONES',
@@ -183,9 +182,10 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6 mt-2">
           {statCards.map((stat, idx) => {
             const Icon = stat.icon;
-            return (
-              <Link key={idx} href={stat.link} className="block h-full">
-                  <Card className="border-none shadow-sm transition-all hover:shadow-md hover:scale-[1.02] cursor-pointer rounded-2xl h-full flex flex-col">
+            const hasLink = 'link' in stat && stat.link;
+            
+            const cardContent = (
+                  <Card className={`border-none shadow-sm transition-all rounded-2xl h-full flex flex-col ${hasLink ? 'hover:shadow-md hover:scale-[1.02] cursor-pointer' : 'cursor-default'}`}>
                   <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
                       <div className="flex items-start justify-between w-full gap-1.5">
                           <div 
@@ -218,7 +218,16 @@ export default function DashboardPage() {
                       </div>
                   </CardContent>
                   </Card>
+            );
+
+            return hasLink ? (
+              <Link key={idx} href={stat.link as string} className="block h-full">
+                  {cardContent}
               </Link>
+            ) : (
+              <div key={idx} className="block h-full">
+                  {cardContent}
+              </div>
             );
           })}
         </div>

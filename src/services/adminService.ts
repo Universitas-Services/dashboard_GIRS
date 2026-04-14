@@ -61,10 +61,13 @@ export const adminService = {
     return response.data;
   },
 
-  // --- MODIFICACIÓN AQUÍ ---
-  // Cambiamos el endpoint a /users/admin/{id} según tu requerimiento explícito
   deleteUser: async (id: string) => {
-    const response = await api.delete(`/users/admin/${id}`);
+    const response = await api.delete(`/admin/users/${id}`);
+    return response.data;
+  },
+
+  bulkDeleteUsers: async (userIds: string[]) => {
+    const response = await api.post(`/admin/users/bulk-delete`, { userIds });
     return response.data;
   },
 
@@ -99,8 +102,10 @@ export const adminService = {
   },
 
   // --- CRM NOTES ---
-  getCrmNotes: async (userId: string): Promise<CRMNotesResponse> => {
-    const response = await api.get<CRMNotesResponse>(`/admin/users/${userId}/crm-notes`);
+  getCrmNotes: async (userId: string, page: number = 1, limit: number = 5): Promise<CRMNotesResponse> => {
+    const response = await api.get<CRMNotesResponse>(`/admin/users/${userId}/crm-notes`, {
+      params: { page, limit }
+    });
     return response.data;
   },
 
@@ -127,6 +132,17 @@ export const adminService = {
 
   getMunicipios: async (estadoId: number) => {
     const response = await api.get(`/territorio/municipios/${estadoId}`);
+    return response.data;
+  },
+
+  // --- SUBSCRIPTIONS ---
+  addSubscriptionDays: async (id: string) => {
+    const response = await api.patch(`/admin/users/${id}/add-subscription`);
+    return response.data;
+  },
+
+  subtractSubscriptionDays: async (id: string) => {
+    const response = await api.patch(`/admin/users/${id}/subtract-subscription`);
     return response.data;
   },
 };
