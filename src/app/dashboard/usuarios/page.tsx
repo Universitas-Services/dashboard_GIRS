@@ -3,8 +3,10 @@
 import { 
   HelpCircle, 
   Shield, Building2, 
-  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Ban, ShieldCheck, Search
+  FilterX, ChevronLeft, ChevronRight, User, ClipboardList, Ban, ShieldCheck, Search, Trash2
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +20,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
+import { UniversitasAPI } from 'sdk-global-universitas';
 import { adminService, GetUsersParams } from '@/services/adminService';
 import { DashboardMetrics, dashboardService } from '@/services/dashboardService';
 import { PaginationMeta, User as UserType } from '@/types/user';
@@ -47,6 +50,8 @@ export default function UsuariosPage() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [popoverId, setPopoverId] = useState<string | null>(null);
+  const [bulkPopoverOpen, setBulkPopoverOpen] = useState(false);
   
   // Dashboard Summary Data
   const [dashboardData, setDashboardData] = useState<DashboardMetrics | null>(null);
@@ -81,6 +86,32 @@ export default function UsuariosPage() {
     }
   }, []);
 
+  const ejecutarEliminar = async (id: string) => {
+    try {
+      await adminService.deleteUser(id);
+      toast.success("Usuario eliminado exitosamente.");
+      setPopoverId(null);
+      fetchUsers(filters);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al eliminar el usuario.");
+    }
+  };
+
+  const ejecutarEliminacionMasiva = async () => {
+    if (selectedUserIds.length === 0) return;
+    try {
+      await adminService.bulkDeleteUsers(selectedUserIds);
+      toast.success(`${selectedUserIds.length} usuarios eliminados exitosamente.`);
+      setBulkPopoverOpen(false);
+      setSelectedUserIds([]);
+      fetchUsers(filters);
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al eliminar usuarios masivamente.");
+    }
+  };
+
   const fetchUsers = useCallback(async (currentFilters: GetUsersParams, signal?: AbortSignal) => {
     setLoading(true);
     try {
@@ -98,7 +129,8 @@ export default function UsuariosPage() {
 
   const fetchEstados = useCallback(async () => {
     try {
-      const response = await adminService.getEstados();
+      const api = new UniversitasAPI(process.env.NEXT_PUBLIC_UNIVERSITAS_SDK_URL);
+      const response = await api.territorio.getEstados();
       setEstados(response.data || response);
     } catch (error) {
       console.error('Error fetching estados:', error);
@@ -108,7 +140,8 @@ export default function UsuariosPage() {
   const fetchMunicipios = useCallback(async (estadoId: number) => {
     setLoadingTerritorio(true);
     try {
-      const response = await adminService.getMunicipios(estadoId);
+      const api = new UniversitasAPI(process.env.NEXT_PUBLIC_UNIVERSITAS_SDK_URL);
+      const response = await api.territorio.getMunicipios(estadoId);
       setMunicipios(response.data || response);
     } catch (error) {
       console.error('Error fetching municipios:', error);
@@ -294,7 +327,6 @@ export default function UsuariosPage() {
         color: '#b45309',
         bgColor: '#fef3c7',
         badge: 'Pendientes',
-        filter: { type: 'estadoCuenta', value: 'POR_ACTIVAR' }
     },
     {
         title: 'SUSPENSIONES',
@@ -401,32 +433,34 @@ export default function UsuariosPage() {
                 </div>
                 
                 {/* Tarjeta de perfil */}
-                <div className="lg:col-span-1 rounded-xl p-6 flex flex-col justify-center" style={{ backgroundColor: 'var(--admin-filter-bg)' }}>
-                    <label className="text-[11px] font-bold tracking-wider text-muted-foreground uppercase mb-2">Tipo de Perfil</label>
-                    <div className="flex gap-2">
-                        <Badge 
-                            className={`px-5 py-2 text-xs rounded-md shadow-none cursor-pointer transition-opacity ${!filters.tipoUsuario ? '' : 'bg-white text-muted-foreground hover:bg-white hover:opacity-100'}`}
-                            style={!filters.tipoUsuario ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
-                            onClick={() => handleTipoUsuarioChange('todos')}
-                        >
-                            Todos
-                        </Badge>
-                        <Badge 
-                            variant="secondary" 
-                            className={`px-5 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.tipoUsuario === 'SERVIDOR_PUBLICO' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
-                            style={filters.tipoUsuario === 'SERVIDOR_PUBLICO' ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
-                            onClick={() => handleTipoUsuarioChange('SERVIDOR_PUBLICO')}
-                        >
-                            Público
-                        </Badge>
-                        <Badge 
-                            variant="secondary" 
-                            className={`px-5 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.tipoUsuario === 'ASESOR_PRIVADO' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
-                            style={filters.tipoUsuario === 'ASESOR_PRIVADO' ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
-                            onClick={() => handleTipoUsuarioChange('ASESOR_PRIVADO')}
-                        >
-                            Asesor
-                        </Badge>
+                <div className="lg:col-span-1 rounded-xl p-6 flex flex-col justify-center items-center" style={{ backgroundColor: 'var(--admin-filter-bg)' }}>
+                    <div className="w-fit">
+                        <label className="block text-[11px] font-bold tracking-wider text-muted-foreground uppercase mb-2">Tipo de Perfil</label>
+                        <div className="flex gap-2">
+                            <Badge 
+                                className={`px-5 py-2 text-xs rounded-md shadow-none cursor-pointer transition-opacity ${!filters.tipoUsuario ? '' : 'bg-white text-muted-foreground hover:bg-white hover:opacity-100'}`}
+                                style={!filters.tipoUsuario ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                                onClick={() => handleTipoUsuarioChange('todos')}
+                            >
+                                Todos
+                            </Badge>
+                            <Badge 
+                                variant="secondary" 
+                                className={`px-5 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.tipoUsuario === 'SERVIDOR_PUBLICO' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                                style={filters.tipoUsuario === 'SERVIDOR_PUBLICO' ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                                onClick={() => handleTipoUsuarioChange('SERVIDOR_PUBLICO')}
+                            >
+                                Público
+                            </Badge>
+                            <Badge 
+                                variant="secondary" 
+                                className={`px-5 py-2 text-xs rounded-md border-none font-semibold cursor-pointer ${filters.tipoUsuario === 'ASESOR_PRIVADO' ? '' : 'bg-white text-muted-foreground hover:bg-white'}`}
+                                style={filters.tipoUsuario === 'ASESOR_PRIVADO' ? { backgroundColor: 'var(--admin-toggle-active-bg)', color: 'var(--admin-toggle-active-text)' } : {}}
+                                onClick={() => handleTipoUsuarioChange('ASESOR_PRIVADO')}
+                            >
+                                Asesor
+                            </Badge>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -491,7 +525,40 @@ export default function UsuariosPage() {
                             <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[200px]">Rol de Perfil</TableHead>
                             <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[180px]">Ubicación</TableHead>
                             <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[130px]">Registro</TableHead>
-                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[130px] pr-6">Estatus</TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[130px]">Condición</TableHead>
+                            <TableHead className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase h-12 w-[130px]">Estatus</TableHead>
+                            <TableHead className="w-[60px] pr-6 text-right">
+                                {selectedUserIds.length > 0 && (
+                                    <Popover open={bulkPopoverOpen} onOpenChange={setBulkPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                            <button className="p-2 bg-red-50 border border-red-100 shadow-sm text-red-500 hover:text-red-700 hover:border-red-300 hover:bg-red-100 rounded-lg transition-all group/trash">
+                                                <Trash2 className="h-4 w-4 transition-transform group-hover/trash:scale-110" />
+                                            </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-64 p-4 rounded-xl shadow-xl border-slate-100" align="end" sideOffset={5}>
+                                            <div className="flex flex-col gap-3 cursor-default" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-start gap-3">
+                                                    <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                                        <Trash2 className="h-4 w-4 text-red-600" />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <h4 className="font-bold text-slate-900 text-sm">Eliminar {selectedUserIds.length} Usuarios</h4>
+                                                        <p className="text-xs text-slate-500 mt-0.5">Esta acción masiva es irreversible.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex justify-end gap-2 mt-1">
+                                                    <Button size="sm" variant="outline" className="h-7 text-xs px-3 shadow-none text-slate-600 font-bold" onClick={() => setBulkPopoverOpen(false)}>
+                                                        Cancelar
+                                                    </Button>
+                                                    <Button size="sm" className="h-7 text-xs px-3 shadow-none bg-red-600 hover:bg-red-700 text-white font-bold" onClick={ejecutarEliminacionMasiva}>
+                                                        Eliminar
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                )}
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -524,15 +591,15 @@ export default function UsuariosPage() {
                                                 onCheckedChange={() => toggleSelectUser(user.id)}
                                             />
                                         </TableCell>
-                                        <TableCell className="py-5">
-                                            <Link href={`/dashboard/usuarios/${user.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity w-fit" onClick={(e) => e.stopPropagation()}>
-                                                <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100">
+                                        <TableCell className="py-5 max-w-[280px]">
+                                            <Link href={`/dashboard/usuarios/${user.id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity w-full" onClick={(e) => e.stopPropagation()}>
+                                                <Avatar className="h-11 w-11 border border-slate-200/60 shadow-sm bg-slate-100 shrink-0">
                                                     <AvatarImage src={`https://api.dicebear.com/7.x/notionists/svg?seed=${user.nombre}`} className="object-cover" />
                                                     <AvatarFallback className="font-bold text-slate-800 text-xs">{user.nombre[0]}{user.apellido ? user.apellido[0] : ''}</AvatarFallback>
                                                 </Avatar>
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold text-slate-900 text-sm hover:underline">{user.nombre} {user.apellido}</span>
-                                                    <span className="text-[11px] text-muted-foreground mt-0.5 font-medium">{user.email}</span>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="font-bold text-slate-900 text-sm hover:underline truncate" title={`${user.nombre} ${user.apellido || ''}`}>{user.nombre} {user.apellido}</span>
+                                                    <span className="text-[11px] text-muted-foreground mt-0.5 font-medium break-all whitespace-normal line-clamp-2 leading-tight" title={user.email}>{user.email}</span>
                                                 </div>
                                             </Link>
                                         </TableCell>
@@ -551,7 +618,14 @@ export default function UsuariosPage() {
                                         <TableCell className="py-5 text-slate-800 font-bold text-sm tracking-tight">
                                             {format(new Date(user.createdAt), 'dd MMM yyyy', { locale: es })}
                                         </TableCell>
-                                        <TableCell className="py-5 pr-6">
+                                        <TableCell className="py-5">
+                                            {user.isActive ? (
+                                                <Badge className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none cursor-default border-none bg-emerald-100 text-emerald-700 hover:bg-emerald-100">ACTIVO</Badge>
+                                            ) : (
+                                                <Badge className="px-3 py-1 text-[10px] font-extrabold rounded-md shadow-none cursor-default border-none bg-rose-100 text-rose-700 hover:bg-rose-100">INACTIVO</Badge>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="py-5">
                                             {(() => {
                                                 const config = statusConfig[user.estadoCuenta] || { label: user.estadoCuenta || 'Sin Estado', color: '#64748b', bgColor: '#f1f5f9' };
                                                 return (
@@ -566,6 +640,36 @@ export default function UsuariosPage() {
                                                     </Badge>
                                                 );
                                             })()}
+                                        </TableCell>
+                                        <TableCell className="py-5 pr-6 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <Popover open={popoverId === user.id} onOpenChange={(open: boolean) => setPopoverId(open ? user.id : null)}>
+                                                <PopoverTrigger asChild>
+                                                    <button className="p-2 bg-red-50 border border-red-100 shadow-sm text-red-500 hover:text-red-700 hover:border-red-300 hover:bg-red-100 rounded-lg transition-all group/trash">
+                                                        <Trash2 className="h-4 w-4 transition-transform group-hover/trash:scale-110" />
+                                                    </button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-64 p-4 rounded-xl shadow-xl border-slate-100" align="end" sideOffset={5}>
+                                                    <div className="flex flex-col gap-3 cursor-default" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                                                                <Trash2 className="h-4 w-4 text-red-600" />
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <h4 className="font-bold text-slate-900 text-sm">Eliminar Usuario</h4>
+                                                                <p className="text-xs text-slate-500 mt-0.5">¿Seguro? Esta acción es irreversible.</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex justify-end gap-2 mt-1">
+                                                            <Button size="sm" variant="outline" className="h-7 text-xs px-3 shadow-none text-slate-600 font-bold" onClick={() => setPopoverId(null)}>
+                                                                Cancelar
+                                                            </Button>
+                                                            <Button size="sm" className="h-7 text-xs px-3 shadow-none bg-red-600 hover:bg-red-700 text-white font-bold" onClick={() => ejecutarEliminar(user.id)}>
+                                                                Eliminar
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -647,16 +751,17 @@ export default function UsuariosPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-6 pb-12">
           {statCards.map((stat, idx) => {
               const Icon = stat.icon;
-              const isActive = (stat.filter.type === 'tipo' && filters.tipoUsuario === stat.filter.value) || 
-                               (stat.filter.type === 'estadoCuenta' && filters.estadoCuenta === stat.filter.value) ||
-                               (stat.filter.type === 'reset' && !filters.tipoUsuario && !filters.estadoCuenta);
+              const filter = 'filter' in stat ? stat.filter : undefined;
+              const isActive = filter && ((filter.type === 'tipo' && filters.tipoUsuario === filter.value) || 
+                               (filter.type === 'estadoCuenta' && filters.estadoCuenta === filter.value) ||
+                               (filter.type === 'reset' && !filters.tipoUsuario && !filters.estadoCuenta));
 
               return (
                   <Card 
                     key={idx} 
-                    className={`border-2 transition-all hover:shadow-md rounded-2xl cursor-pointer flex flex-col h-full ${isActive ? 'shadow-md scale-[1.02]' : 'border-transparent shadow-sm'}`}
-                    style={isActive ? { borderColor: stat.color, backgroundColor: 'white' } : {}}
-                    onClick={() => handleCardClick(stat.filter)}
+                    className={`border-2 transition-all rounded-2xl flex flex-col h-full ${filter ? 'hover:shadow-md cursor-pointer' : 'cursor-default'} ${isActive ? 'shadow-md scale-[1.02]' : 'border-transparent shadow-sm'}`}
+                    style={isActive && filter ? { borderColor: stat.color, backgroundColor: 'white' } : {}}
+                    onClick={() => filter && handleCardClick(filter)}
                   >
                       <CardContent className="p-5 flex flex-col justify-between h-full gap-4">
                           <div className="flex items-start justify-between w-full gap-1.5">

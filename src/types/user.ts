@@ -78,6 +78,6 @@ export interface CRMNotesResponse {
     email: string;
     tipoUsuario: string;
   };
-  totalNotas: number;
-  notes: CRMNote[];
+  data: CRMNote[];
+  meta: PaginationMeta;
 }
