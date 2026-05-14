@@ -178,13 +178,16 @@ export default function AvisosPage() {
 
                   <div className="flex flex-col items-center gap-1.5 mt-2">
                     <Avatar className="h-7 w-7 border-2 border-white shadow-sm">
-                      <AvatarImage src={user.avatar} />
+                      <AvatarImage
+                        src="/Julio-AI-Fospuca.png"
+                        alt="Universitas"
+                      />
                       <AvatarFallback className="text-[9px] font-bold">
-                        AD
+                        UN
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-[9px] font-black text-slate-900 uppercase tracking-wider">
-                      {user.name}
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                      Universitas
                     </span>
                   </div>
                 </div>
