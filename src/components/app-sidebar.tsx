@@ -9,7 +9,9 @@ import {
   Users,
   LogOut,
   ChevronsUpDown,
+  ChevronRight,
   MessageSquare, // Icono para Chats
+  Bell,
 } from 'lucide-react';
 
 import {
@@ -20,6 +22,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarGroup,
   SidebarGroupLabel,
   SidebarGroupContent,
@@ -33,6 +38,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 import {
   AlertDialog,
@@ -90,13 +101,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenu>
               {/* Opción Inicio */}
               <SidebarMenuItem>
-                <SidebarMenuButton 
-                  asChild 
+                <SidebarMenuButton
+                  asChild
                   tooltip="Panel principal"
                   onClick={() => {
                     // Si ya estamos en el dashboard, disparamos el evento de refresco
                     if (window.location.pathname === '/dashboard') {
-                      window.dispatchEvent(new CustomEvent('refresh-dashboard'));
+                      window.dispatchEvent(
+                        new CustomEvent('refresh-dashboard')
+                      );
                     }
                   }}
                 >
@@ -107,16 +120,46 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Opción Panel de Usuarios */}
+              {/* Opción Gestión de Usuarios (Desplegable) */}
+              <Collapsible asChild defaultOpen className="group/collapsible">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip="Gestión de usuarios">
+                      <Users />
+                      <span>Gestión de usuarios</span>
+                      <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild>
+                          <Link href="/dashboard/usuarios">
+                            <span>Listado de usuarios</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild>
+                          <Link href="/dashboard/usuarios/no-concretados">
+                            <span>Usuarios no concretados</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+
+              {/* Opción Avisos */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Panel de usuarios">
-                  <Link href="/dashboard/usuarios">
-                    <Users />
-                    <span>Panel de usuarios</span>
+                <SidebarMenuButton asChild tooltip="Avisos">
+                  <Link href="/dashboard/avisos">
+                    <Bell />
+                    <span>Avisos</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
 
               {/* Historial de Chats (Movido al final) */}
               <SidebarMenuItem>

@@ -85,14 +85,19 @@ export const adminService = {
     });
     return response.data;
   },
-  
-  updateAccountStatus: async (id: string, data: { estadoCuenta: string; fechaVencimientoAcceso?: string }) => {
+
+  updateAccountStatus: async (
+    id: string,
+    data: { estadoCuenta: string; fechaVencimientoAcceso?: string }
+  ) => {
     const response = await api.patch(`/admin/users/${id}/estado-cuenta`, data);
     return response.data;
   },
 
   convertToPrivateTrial: async (id: string) => {
-    const response = await api.patch(`/admin/users/${id}/convert-to-private-trial`);
+    const response = await api.patch(
+      `/admin/users/${id}/convert-to-private-trial`
+    );
     return response.data;
   },
 
@@ -102,20 +107,39 @@ export const adminService = {
   },
 
   // --- CRM NOTES ---
-  getCrmNotes: async (userId: string, page: number = 1, limit: number = 5): Promise<CRMNotesResponse> => {
-    const response = await api.get<CRMNotesResponse>(`/admin/users/${userId}/crm-notes`, {
-      params: { page, limit }
-    });
+  getCrmNotes: async (
+    userId: string,
+    page: number = 1,
+    limit: number = 5
+  ): Promise<CRMNotesResponse> => {
+    const response = await api.get<CRMNotesResponse>(
+      `/admin/users/${userId}/crm-notes`,
+      {
+        params: { page, limit },
+      }
+    );
     return response.data;
   },
 
-  createCrmNote: async (userId: string, data: { content: string; etiqueta: string | null }): Promise<CRMNote> => {
-    const response = await api.post<CRMNote>(`/admin/users/${userId}/crm-notes`, data);
+  createCrmNote: async (
+    userId: string,
+    data: { content: string; etiqueta: string | null }
+  ): Promise<CRMNote> => {
+    const response = await api.post<CRMNote>(
+      `/admin/users/${userId}/crm-notes`,
+      data
+    );
     return response.data;
   },
 
-  updateCrmNote: async (noteId: string, data: { content?: string; etiqueta?: string | null }): Promise<CRMNote> => {
-    const response = await api.patch<CRMNote>(`/admin/crm-notes/${noteId}`, data);
+  updateCrmNote: async (
+    noteId: string,
+    data: { content?: string; etiqueta?: string | null }
+  ): Promise<CRMNote> => {
+    const response = await api.patch<CRMNote>(
+      `/admin/crm-notes/${noteId}`,
+      data
+    );
     return response.data;
   },
 
@@ -142,7 +166,51 @@ export const adminService = {
   },
 
   subtractSubscriptionDays: async (id: string) => {
-    const response = await api.patch(`/admin/users/${id}/subtract-subscription`);
+    const response = await api.patch(
+      `/admin/users/${id}/subtract-subscription`
+    );
+    return response.data;
+  },
+
+  // --- NEWS / AVISOS ---
+  createNews: async (data: { title: string; content: string }) => {
+    const response = await api.post('/admin/news', data);
+    return response.data;
+  },
+
+  // --- ABANDONED REGISTRATIONS ---
+  getAbandonedRegistrations: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    tipoUsuario?: string;
+  }): Promise<import('@/types/user').AbandonedRegistrationsResponse> => {
+    const response = await api.get('/admin/abandoned-registrations', {
+      params,
+    });
+    return response.data;
+  },
+
+  getAbandonedRegistrationById: async (
+    id: string
+  ): Promise<import('@/types/user').AbandonedRegistration> => {
+    const response = await api.get(`/admin/abandoned-registrations/${id}`);
+    return response.data;
+  },
+
+  deleteAbandonedRegistration: async (id: string): Promise<void> => {
+    const response = await api.delete(`/admin/abandoned-registrations/${id}`);
+    return response.data;
+  },
+
+  addAbandonedRegistrationNote: async (
+    id: string,
+    data: { content: string }
+  ): Promise<import('@/types/user').CRMNote> => {
+    const response = await api.post(
+      `/admin/abandoned-registrations/${id}/notes`,
+      data
+    );
     return response.data;
   },
 };

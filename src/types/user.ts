@@ -81,3 +81,20 @@ export interface CRMNotesResponse {
   data: CRMNote[];
   meta: PaginationMeta;
 }
+
+export interface AbandonedRegistration {
+  id: string;
+  email: string;
+  nombre: string;
+  apellido: string | null;
+  telefono: string | null;
+  tipoUsuario: string | null;
+  registeredAt: string;
+  deletedAt: string;
+  notes?: CRMNote[];
+}
+
+export interface AbandonedRegistrationsResponse {
+  data: AbandonedRegistration[];
+  meta: PaginationMeta;
+}

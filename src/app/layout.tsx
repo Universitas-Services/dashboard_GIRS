@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 // 1. Importamos el inicializador
 import { AuthInitializer } from '@/components/AuthInitializer';
+import { Toaster } from 'sonner';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({
       <body className={inter.className}>
         {/* 2. Lo colocamos aquí para que arranque la lógica de Auth */}
         <AuthInitializer>{children}</AuthInitializer>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );
